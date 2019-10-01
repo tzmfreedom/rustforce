@@ -1,0 +1,9 @@
+[package]
+name = "rustforce"
+version = "0.1.0"
+authors = ["tzmfreedom <makoto_tajitsu@hotmail.co.jp>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
