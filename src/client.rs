@@ -1,10 +1,6 @@
 extern crate reqwest;
 
 use reqwest::header::HeaderMap;
-use reqwest::header::{CONTENT_TYPE};
-use std::collections::HashMap;
-use std::io::Read;
-use std::fmt::Error;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -47,10 +43,8 @@ impl Client {
             ("username", username.as_str()),
             ("password", password.as_str()),
         ];
-        let mut headers = HeaderMap::new();
         let client = reqwest::Client::new();
         let res: TokenResponse = client.post(token_url.as_str())
-            .headers(headers)
             .form(&params)
             .send()
             .unwrap()
