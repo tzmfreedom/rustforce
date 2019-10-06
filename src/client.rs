@@ -4,7 +4,7 @@ use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Response, Error, StatusCode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse, DescribeResponse};
+use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse, DescribeResponse, DescribeGlobalResponse};
 
 #[derive(Debug)]
 pub struct Client {
@@ -113,6 +113,16 @@ impl Client {
 
         if res.status().is_success() {
             return Ok(());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn describe_global(&self) -> Result<DescribeGlobalResponse, ErrorResponse> {
+        let resource_url = format!("{}/sobjects/", self.base_path());
+        let mut res = self.get(resource_url, vec![]).unwrap();
+
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
         }
         return Err(res.json().unwrap());
     }
