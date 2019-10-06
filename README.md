@@ -45,6 +45,13 @@ fn main() {
 
 ### Authentication
 
+Username Password Flow
+```rust
+let mut client = Client::new(client_id, client_secret);
+client.login_with_credential(username, password);
+```
+
+[WIP]Authorization Code Grant
 
 ### Query Records
 
@@ -67,8 +74,26 @@ println!("{:?}", r);
 let r = client.update("Account", "{sobject_id}", params);
 ```
 
+### Upsert Record
+
+```rust
+let r = client.upsert("Account", "{external_key_name}", "{external_key", params);
+```
+
 ### Delete Record
 
 ```rust
 let r = client.destroy("Account", "{sobject_id}");
+```
+
+### Describe Global
+
+```rust
+let r = client.describe_global();
+```
+
+### Describe SObject
+
+```rust
+let r = client.describe("Account");
 ```
