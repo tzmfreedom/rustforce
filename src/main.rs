@@ -1,7 +1,9 @@
-use rustforce::client::{Client, QueryResponse};
+use rustforce::client::{Client, QueryResponse, ErrorResponse};
 use std::env;
 use std::env::VarError;
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::error::Error;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -28,7 +30,13 @@ fn main() {
     let mut client = Client::new(client_id, client_secret);
     client.login_with_credential(username, password);
 //    println!("{:?}", client);
-    client.create("Account", [("name", "create from rust")]);
-    let res: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account ORDER BY CreatedDate DESC LIMIT 1".to_string());
+    let mut params = HashMap::new();
+    params.insert("Name", "hello rust");
+//    let r = client.create("Account", params);
+//    println!("{:?}", r);
+//    let r = client.update("Account", "0012K00001drfGYQAY", params);
+    let r = client.destroy("Account", "0012K00001drfGYQAY");
+    println!("{:?}", r);
+    let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
     println!("{:?}", res);
 }

@@ -2,10 +2,10 @@ extern crate reqwest;
 
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
-use self::reqwest::header::AUTHORIZATION;
+use reqwest::header::AUTHORIZATION;
 use serde::export::fmt::Debug;
 use serde::de::DeserializeOwned;
-use self::reqwest::{Response, Error};
+use reqwest::{Response, Error};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +13,20 @@ pub struct QueryResponse<T> {
     total_size: i32,
     done: bool,
     records: Vec<T>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateResponse {
+    id: String,
+    success: bool,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorResponse {
+    message: String,
+    error_code: String,
+    fields: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -83,24 +97,44 @@ impl Client {
         self.instance_url = Some(res.instance_url);
     }
 
-    pub fn query<A: Debug + DeserializeOwned>(&self, query: String) -> QueryResponse<A>
-    {
+    pub fn query<A: Debug + DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {
         let query_url = format!("{}/services/data/{}/query/", self.instance_url.as_ref().unwrap(), self.version);
         let params = vec![("q", query)];
-        let res = self.get(query_url, params)
-            .unwrap()
-            .json()
-            .unwrap();
-        return res;
+        let mut res = self.get(query_url, params).unwrap();
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
     }
 
-    pub fn create<A: Serialize>(&self, sobject_name: &str, params: A) {
-        let resource_url= format!("{}/services/data/{}/sobjects/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name);
-        let res = self.post(resource_url, params)
-            .unwrap()
-            .json()
-            .unwrap();
-        return res;
+    pub fn create<A: Serialize>(&self, sobject_name: &str, params: A) -> Result<CreateResponse, Vec<ErrorResponse>> {
+        let resource_url = format!("{}/services/data/{}/sobjects/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name);
+        let mut res = self.post(resource_url, params).unwrap();
+
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn update<A: Serialize>(&self, sobject_name: &str, id: &str, params: A) -> Result<(), Vec<ErrorResponse>> {
+        let resource_url = format!("{}/services/data/{}/sobjects/{}/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name, id);
+        let mut res = self.patch(resource_url, params).unwrap();
+
+        if res.status().is_success() {
+            return Ok(());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Vec<ErrorResponse>> {
+        let resource_url = format!("{}/services/data/{}/sobjects/{}/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name, id);
+        let mut res = self.delete(resource_url).unwrap();
+
+        if res.status().is_success() {
+            return Ok(());
+        }
+        return Err(res.json().unwrap());
     }
 
     fn get(&self, url: String, params: Vec<(&str, String)>) -> Result<Response, Error> {
@@ -110,10 +144,23 @@ impl Client {
             .send();
     }
 
-    fn post<T: Serialize>(&self, url: String, body: T) -> Result<Response, Error> {
+    fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
         return self.http_client.post(url.as_str())
             .headers(self.create_header())
-            .json(&body)
+            .json(&params)
+            .send();
+    }
+
+    fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+        return self.http_client.patch(url.as_str())
+            .headers(self.create_header())
+            .json(&params)
+            .send();
+    }
+
+    fn delete(&self, url: String) -> Result<Response, Error> {
+        return self.http_client.delete(url.as_str())
+            .headers(self.create_header())
             .send();
     }
 
