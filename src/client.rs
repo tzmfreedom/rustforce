@@ -65,7 +65,7 @@ impl Client {
         }
     }
 
-    pub fn query<A: Debug + DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {
+    pub fn query<A: DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
         let mut res = self.get(query_url, params).unwrap();

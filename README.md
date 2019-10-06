@@ -5,16 +5,13 @@
 
 Salesforce Client for Rust
 
-
-## Install
-
-
 ## Usage
 
 ```rust
 use rustforce::Client;
 use rustforce::response::{QueryResponse, ErrorResponse};
 use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
