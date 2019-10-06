@@ -56,7 +56,19 @@ client.login_with_credential(username, password);
 ### Query Records
 
 ```rust
-let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
+let r: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account");
+```
+
+### Query All Records
+
+```rust
+let r: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query_all("SELECT Id, Name FROM Account");
+```
+
+### Find By Id
+
+```rust
+let r: Result<Account, Vec<ErrorResponse>> = client.find_by_id("Account", "{sf_id}");
 ```
 
 ### Create Record
@@ -96,4 +108,16 @@ let r = client.describe_global();
 
 ```rust
 let r = client.describe("Account");
+```
+
+### Versions
+
+```rust
+let versions = client.versions();
+```
+
+### Search(SOSL)
+
+```rust
+let r = client.search("FIND {Rust}");
 ```

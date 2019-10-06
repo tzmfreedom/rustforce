@@ -223,3 +223,34 @@ pub struct DescribeGlobalSObjectResponse{
     pub updateable: bool,
     pub urls: HashMap<String, String>,
 }
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct SearchResponse {
+    pub search_records: Vec<SearchRecord>,
+//    pub metadata: Metadata,
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct SearchRecord {
+    #[serde(rename = "Id")]
+    pub id: String,
+    pub attributes: SObjectAttribute,
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct SObjectAttribute {
+    #[serde(rename = "type")]
+    pub sobject_type: String,
+    pub url: String,
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct VersionResponse {
+    pub label: String,
+    pub url: String,
+    pub version: String,
+}

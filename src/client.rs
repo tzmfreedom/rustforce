@@ -4,7 +4,8 @@ use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Response, Error, StatusCode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse, DescribeResponse, DescribeGlobalResponse};
+use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse, DescribeResponse, DescribeGlobalResponse, SearchResponse, VersionResponse};
+use serde::export::fmt::Debug;
 
 #[derive(Debug)]
 pub struct Client {
@@ -37,6 +38,10 @@ impl Client {
         self.login_endpoint = endpoint.to_string();
     }
 
+    pub fn set_version(&mut self, version: &str) {
+        self.version = version.to_string();
+    }
+
     pub fn login_with_credential(&mut self, username: String, password: String) -> Result<(), TokenErrorResponse> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
@@ -64,7 +69,7 @@ impl Client {
         }
     }
 
-    pub fn query<A: DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {
+    pub fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Vec<ErrorResponse>> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
         let mut res = self.get(query_url, params).unwrap();
@@ -74,7 +79,47 @@ impl Client {
         return Err(res.json().unwrap());
     }
 
-    pub fn create<A: Serialize>(&self, sobject_name: &str, params: A) -> Result<CreateResponse, Vec<ErrorResponse>> {
+    pub fn query_all<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Vec<ErrorResponse>> {
+        let query_url = format!("{}/queryAll/", self.base_path());
+        let params = vec![("q", query)];
+        let mut res = self.get(query_url, params).unwrap();
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn search(&self, query: &str) -> Result<SearchResponse, Vec<ErrorResponse>> {
+        let query_url = format!("{}/search/", self.base_path());
+        let params = vec![("q", query)];
+        let mut res = self.get(query_url, params).unwrap();
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn versions(&self) -> Result<Vec<VersionResponse>, Vec<ErrorResponse>> {
+        let versions_url = format!("{}/services/data/", self.instance_url.as_ref().unwrap());
+        let mut res = self.get(versions_url, vec![]).unwrap();
+        if res.status().is_success() {
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn find_by_id<T: DeserializeOwned>(&self, sobject_name: &str, id: &str) -> Result<T, Vec<ErrorResponse>> {
+        let resource_url = format ! ("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
+        let mut res = self.get(resource_url, vec! []).unwrap();
+
+        if res.status().is_success() {
+            debug(res.text().unwrap());
+            return Ok(res.json().unwrap());
+        }
+        return Err(res.json().unwrap());
+    }
+
+    pub fn create<T: Serialize>(&self, sobject_name: &str, params: T) -> Result<CreateResponse, Vec<ErrorResponse>> {
         let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
         let mut res = self.post(resource_url, params).unwrap();
 
@@ -84,7 +129,7 @@ impl Client {
         return Err(res.json().unwrap());
     }
 
-    pub fn update<A: Serialize>(&self, sobject_name: &str, id: &str, params: A) -> Result<(), Vec<ErrorResponse>> {
+    pub fn update<T: Serialize>(&self, sobject_name: &str, id: &str, params: T) -> Result<(), Vec<ErrorResponse>> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let mut res = self.patch(resource_url, params).unwrap();
 
@@ -94,7 +139,7 @@ impl Client {
         return Err(res.json().unwrap());
     }
 
-    pub fn upsert<A: Serialize>(&self, sobject_name: &str, key_name: &str, key: &str, params: A) -> Result<Option<CreateResponse>, Vec<ErrorResponse>> {
+    pub fn upsert<T: Serialize>(&self, sobject_name: &str, key_name: &str, key: &str, params: T) -> Result<Option<CreateResponse>, Vec<ErrorResponse>> {
         let resource_url = format!("{}/sobjects/{}/{}/{}", self.base_path(), sobject_name, key_name, key);
         let mut res = self.patch(resource_url, params).unwrap();
 
@@ -137,7 +182,7 @@ impl Client {
         return Err(res.json().unwrap());
     }
 
-    fn get(&self, url: String, params: Vec<(&str, String)>) -> Result<Response, Error> {
+    fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
         return self.http_client.get(url.as_str())
             .headers(self.create_header())
             .query(&params)
@@ -173,4 +218,8 @@ impl Client {
     fn base_path(&self) -> String {
         format!("{}/services/data/{}", self.instance_url.as_ref().unwrap(), self.version)
     }
+}
+
+fn debug<T: Debug>(s: T) {
+    println!("{:#?}", s);
 }
