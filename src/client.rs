@@ -5,7 +5,7 @@ use reqwest::{Response, Error, StatusCode};
 use serde::Serialize;
 use serde::export::fmt::Debug;
 use serde::de::DeserializeOwned;
-use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, UpsertResponse};
+use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse};
 
 #[derive(Debug)]
 pub struct Client {
@@ -34,7 +34,11 @@ impl Client {
         }
     }
 
-    pub fn login_with_credential(&mut self, username: String, password: String) {
+    pub fn set_login_endpoint(&mut self, endpoint: &str) {
+        self.login_endpoint = endpoint.to_string();
+    }
+
+    pub fn login_with_credential(&mut self, username: String, password: String) -> Result<(), TokenErrorResponse> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "password"),
@@ -43,19 +47,22 @@ impl Client {
             ("username", username.as_str()),
             ("password", password.as_str()),
         ];
-        let res: TokenResponse = self.http_client.post(token_url.as_str())
+        let mut res = self.http_client.post(token_url.as_str())
             .form(&params)
             .send()
-            .unwrap()
-            .json()
             .unwrap();
-
-        self.access_token = Some(AccessToken {
-            value: res.access_token,
-            issued_at: res.issued_at,
-            token_type: res.token_type,
-        });
-        self.instance_url = Some(res.instance_url);
+        if res.status().is_success() {
+            let r: TokenResponse = res.json().unwrap();
+            self.access_token = Some(AccessToken {
+                value: r.access_token,
+                issued_at: r.issued_at,
+                token_type: r.token_type,
+            });
+            self.instance_url = Some(r.instance_url);
+            Ok(())
+        } else {
+            Err(res.json().unwrap())
+        }
     }
 
     pub fn query<A: Debug + DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {

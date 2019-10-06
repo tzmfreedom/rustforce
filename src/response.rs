@@ -39,6 +39,12 @@ pub struct TokenResponse {
     pub token_type: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct TokenErrorResponse {
+    error: String,
+    error_description: String,
+}
+
 #[derive(Debug)]
 pub struct AccessToken {
     pub token_type: String,

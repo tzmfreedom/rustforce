@@ -2,6 +2,14 @@
 name = "rustforce"
 version = "0.1.0"
 authors = ["tzmfreedom <makoto_tajitsu@hotmail.co.jp>"]
+license = "MIT"
+description = "Salesforce REST API Client"
+documentation = "https://docs.rs/rustforce"
+homepage = "https://github.com/tzmfreedom/rustforce"
+repository = "https://github.com/tzmfreedom/rustforce"
+readme = "README.md"
+keywords = ["Salesforce", "API"]
+categories = ["web-programming"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,3 +18,7 @@ edition = "2018"
 
 reqwest = "0.9.20"
 serde = "1.0.101"
+
+[dev-dependencies]
+
+cargo-license = "0.2.0"

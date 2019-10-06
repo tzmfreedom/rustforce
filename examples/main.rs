@@ -28,15 +28,20 @@ fn main() {
     let password = env::var("SFDC_PASSWORD").unwrap();
 
     let mut client = Client::new(client_id, client_secret);
-    client.login_with_credential(username, password);
+    client.set_login_endpoint("https://login.salesforce.com");
+    let result = client.login_with_credential(username, password);
+    if result.is_ok() {
 //    println!("{:?}", client);
-    let mut params = HashMap::new();
-    params.insert("Name", "hello rust");
+        let mut params = HashMap::new();
+        params.insert("Name", "hello rust");
 //    let r = client.create("Account", params);
 //    println!("{:?}", r);
-    let r = client.upsert("Account", "ExKey__c", "0012K00001drfGYQAY1", params);
+        let r = client.upsert("Account", "ExKey__c", "0012K00001drfGYQAY1", params);
 //    let r = client.destroy("Account", "0012K00001drfGYQAY");
-    println!("{:?}", r);
-    let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
-    println!("{:?}", res);
+        println!("{:?}", r);
+        let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
+        println!("{:?}", res);
+    } else {
+        println!("{:?}", result);
+    }
 }

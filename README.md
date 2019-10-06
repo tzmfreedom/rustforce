@@ -1,3 +1,6 @@
+[![crate-name at crates.io](https://img.shields.io/crates/v/rustforce.svg)](https://crates.io/crates/rustforce)
+[![crate-name at docs.rs](https://docs.rs/rustforce/badge.svg)](https://docs.rs/rustforce)
+
 ## Rustforce
 
 Salesforce Client for Rust
