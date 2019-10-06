@@ -1,50 +1,11 @@
 extern crate reqwest;
 
-use reqwest::header::HeaderMap;
-use serde::{Deserialize, Serialize};
-use reqwest::header::AUTHORIZATION;
+use reqwest::header::{HeaderMap, AUTHORIZATION};
+use reqwest::{Response, Error, StatusCode};
+use serde::Serialize;
 use serde::export::fmt::Debug;
 use serde::de::DeserializeOwned;
-use reqwest::{Response, Error};
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct QueryResponse<T> {
-    total_size: i32,
-    done: bool,
-    records: Vec<T>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateResponse {
-    id: String,
-    success: bool,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ErrorResponse {
-    message: String,
-    error_code: String,
-    fields: Option<Vec<String>>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TokenResponse {
-    id: String,
-    issued_at: String,
-    access_token: String,
-    instance_url: String,
-    signature: String,
-    token_type: String,
-}
-
-#[derive(Debug)]
-pub struct AccessToken {
-    token_type: String,
-    value: String,
-    issued_at: String,
-}
+use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, UpsertResponse};
 
 #[derive(Debug)]
 pub struct Client {
@@ -98,7 +59,7 @@ impl Client {
     }
 
     pub fn query<A: Debug + DeserializeOwned>(&self, query: String) -> Result<QueryResponse<A>, Vec<ErrorResponse>> {
-        let query_url = format!("{}/services/data/{}/query/", self.instance_url.as_ref().unwrap(), self.version);
+        let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
         let mut res = self.get(query_url, params).unwrap();
         if res.status().is_success() {
@@ -108,7 +69,7 @@ impl Client {
     }
 
     pub fn create<A: Serialize>(&self, sobject_name: &str, params: A) -> Result<CreateResponse, Vec<ErrorResponse>> {
-        let resource_url = format!("{}/services/data/{}/sobjects/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name);
+        let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
         let mut res = self.post(resource_url, params).unwrap();
 
         if res.status().is_success() {
@@ -118,7 +79,7 @@ impl Client {
     }
 
     pub fn update<A: Serialize>(&self, sobject_name: &str, id: &str, params: A) -> Result<(), Vec<ErrorResponse>> {
-        let resource_url = format!("{}/services/data/{}/sobjects/{}/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name, id);
+        let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let mut res = self.patch(resource_url, params).unwrap();
 
         if res.status().is_success() {
@@ -127,8 +88,21 @@ impl Client {
         return Err(res.json().unwrap());
     }
 
+    pub fn upsert<A: Serialize>(&self, sobject_name: &str, key_name: &str, key: &str, params: A) -> Result<Option<CreateResponse>, Vec<ErrorResponse>> {
+        let resource_url = format!("{}/sobjects/{}/{}/{}", self.base_path(), sobject_name, key_name, key);
+        let mut res = self.patch(resource_url, params).unwrap();
+
+        if res.status().is_success() {
+            return match res.status() {
+                StatusCode::CREATED => Ok(res.json().unwrap()),
+                _ => Ok(None),
+            }
+        }
+        return Err(res.json().unwrap());
+    }
+
     pub fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Vec<ErrorResponse>> {
-        let resource_url = format!("{}/services/data/{}/sobjects/{}/{}", self.instance_url.as_ref().unwrap(), self.version, sobject_name, id);
+        let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let mut res = self.delete(resource_url).unwrap();
 
         if res.status().is_success() {
@@ -168,5 +142,9 @@ impl Client {
         let mut headers = HeaderMap::new();
         headers.insert(AUTHORIZATION, format!("Bearer {}", self.access_token.as_ref().unwrap().value).parse().unwrap());
         return headers;
+    }
+
+    fn base_path(&self) -> String {
+        format!("{}/services/data/{}", self.instance_url.as_ref().unwrap(), self.version)
     }
 }

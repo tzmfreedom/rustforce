@@ -1,9 +1,9 @@
-use rustforce::client::{Client, QueryResponse, ErrorResponse};
+use rustforce::Client;
+use rustforce::response::{QueryResponse, ErrorResponse};
 use std::env;
 use std::env::VarError;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::error::Error;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -34,8 +34,8 @@ fn main() {
     params.insert("Name", "hello rust");
 //    let r = client.create("Account", params);
 //    println!("{:?}", r);
-//    let r = client.update("Account", "0012K00001drfGYQAY", params);
-    let r = client.destroy("Account", "0012K00001drfGYQAY");
+    let r = client.upsert("Account", "ExKey__c", "0012K00001drfGYQAY1", params);
+//    let r = client.destroy("Account", "0012K00001drfGYQAY");
     println!("{:?}", r);
     let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
     println!("{:?}", res);
