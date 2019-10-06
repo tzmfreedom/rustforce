@@ -52,40 +52,12 @@ pub struct AccessToken {
     pub issued_at: String,
 }
 
-pub struct ChildRelationShip {
-    pub cascade_delete: bool,
-    pub child_object: String,
-    pub deprecated_and_hidden: bool,
-    pub field: String,
-//    pub junction_id_list_names: [],
-//    pub junction_reference_to: [],
-    pub relationship_name: String,
-    pub restricted_delete: bool,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
-pub struct Urls {
-    pub compact_layouts: String,
-    pub row_template: String,
-    pub approval_layouts: String,
-    pub ui_detail_template: String,
-    pub ui_edit_template: String,
-    pub default_values: String,
-    pub listviews: String,
-    pub describe: String,
-    pub ui_new_record: String,
-    pub quick_actions: String,
-    pub layouts: String,
-    pub sobject: String,
-}
-
 #[serde(rename_all = "camelCase")]
 #[derive(Deserialize, Debug)]
 pub struct DescribeResponse {
     pub activateable: bool,
 //    pub action_overrides: ActionOverride[],
-    pub child_relationships: Vec<Child_relationship>,
+    pub child_relationships: Vec<ChildRelationship>,
     pub compact_layoutable: bool,
     pub createable: bool,
     pub custom: bool,
@@ -181,4 +153,35 @@ pub struct Field {
     pub unique: bool,
     pub updateable: bool,
     pub write_requires_master_read: bool
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct ChildRelationship {
+    pub cascade_delete: bool,
+    #[serde(rename = "childSObject")]
+    pub child_sobject: Option<String>,
+    pub deprecated_and_hidden: bool,
+    pub field: String,
+    //    pub junction_id_list_names: [],
+//    pub junction_reference_to: [],
+    pub relationship_name: Option<String>,
+    pub restricted_delete: bool,
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Debug)]
+pub struct Urls {
+    pub compact_layouts: String,
+    pub row_template: String,
+    pub approval_layouts: String,
+    pub ui_detail_template: String,
+    pub ui_edit_template: String,
+    pub default_values: String,
+    pub listviews: String,
+    pub describe: String,
+    pub ui_new_record: String,
+    pub quick_actions: String,
+    pub layouts: String,
+    pub sobject: String,
 }
