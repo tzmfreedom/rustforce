@@ -25,8 +25,10 @@ fn main() {
     let password = env::var("SFDC_PASSWORD").unwrap();
 
     let mut client = Client::new(client_id, client_secret);
-    client.login_with_credential(username, password);
+    let r = client.login_with_credential(username, password);
 
-    let res = client.destroy("Account", "0012K00001drfGYQAY");
-    println!("{:?}", res);
+    if r.is_ok() {
+        let res = client.destroy("Account", "0012K00001drfGYQAY");
+        println!("{:?}", res);
+    }
 }
