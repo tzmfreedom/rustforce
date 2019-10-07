@@ -37,7 +37,7 @@ pub struct TokenResponse {
     pub access_token: String,
     pub instance_url: String,
     pub signature: String,
-    pub token_type: String,
+    pub token_type: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

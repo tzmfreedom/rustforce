@@ -5,9 +5,7 @@ use reqwest::{Response, Error, StatusCode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use crate::response::{AccessToken, TokenResponse, QueryResponse, ErrorResponse, CreateResponse, TokenErrorResponse, DescribeResponse, DescribeGlobalResponse, SearchResponse, VersionResponse};
-use serde::export::fmt::Debug;
 
-#[derive(Debug)]
 pub struct Client {
     http_client: reqwest::Client,
     client_id: String,
@@ -15,7 +13,6 @@ pub struct Client {
     login_endpoint: String,
     instance_url: Option<String>,
     access_token: Option<AccessToken>,
-    reflesh_token: Option<String>,
     version: String,
 }
 
@@ -28,7 +25,6 @@ impl Client {
             client_secret,
             login_endpoint: "https://login.salesforce.com".to_string(),
             access_token: None,
-            reflesh_token: None,
             instance_url: None,
             version: "v44.0".to_string(),
         }
@@ -40,6 +36,44 @@ impl Client {
 
     pub fn set_version(&mut self, version: &str) {
         self.version = version.to_string();
+    }
+
+    pub fn set_instance_url(&mut self, instance_url: &str) {
+        self.instance_url = Some(instance_url.to_string());
+    }
+
+    pub fn set_access_token(&mut self, access_token: &str) {
+        self.access_token = Some(AccessToken {
+            token_type: "Bearer".to_string(),
+            value: access_token.to_string(),
+            issued_at: "".to_string(),
+        });
+    }
+
+    pub fn refresh(&mut self, refresh_token: &str) -> Result<(), TokenErrorResponse> {
+        let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
+        let params = [
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh_token),
+            ("client_id", self.client_id.as_str()),
+            ("client_secret", self.client_secret.as_str()),
+        ];
+        let mut res = self.http_client.post(token_url.as_str())
+            .form(&params)
+            .send()
+            .unwrap();
+        if res.status().is_success() {
+            let r: TokenResponse = res.json().unwrap();
+            self.access_token = Some(AccessToken {
+                value: r.access_token,
+                issued_at: r.issued_at,
+                token_type: "Bearer".to_string(),
+            });
+            self.instance_url = Some(r.instance_url);
+            Ok(())
+        } else {
+            Err(res.json().unwrap())
+        }
     }
 
     pub fn login_with_credential(&mut self, username: String, password: String) -> Result<(), TokenErrorResponse> {
@@ -60,7 +94,7 @@ impl Client {
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
-                token_type: r.token_type,
+                token_type: r.token_type.unwrap(),
             });
             self.instance_url = Some(r.instance_url);
             Ok(())
@@ -113,7 +147,6 @@ impl Client {
         let mut res = self.get(resource_url, vec! []).unwrap();
 
         if res.status().is_success() {
-            debug(res.text().unwrap());
             return Ok(res.json().unwrap());
         }
         return Err(res.json().unwrap());
@@ -218,8 +251,4 @@ impl Client {
     fn base_path(&self) -> String {
         format!("{}/services/data/{}", self.instance_url.as_ref().unwrap(), self.version)
     }
-}
-
-fn debug<T: Debug>(s: T) {
-    println!("{:#?}", s);
 }
