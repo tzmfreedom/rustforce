@@ -991,7 +991,7 @@ dependencies = [
 
 [[package]]
 name = "rustforce"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cargo-license 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.20 (registry+https://github.com/rust-lang/crates.io-index)",
