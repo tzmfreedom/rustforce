@@ -54,6 +54,12 @@ client.login_with_credential(username, password);
 
 [WIP]Authorization Code Grant
 
+### Refresh Token
+
+```rust
+let r = client.refresh("xxxx");
+```
+
 ### Query Records
 
 ```rust
