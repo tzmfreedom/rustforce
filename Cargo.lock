@@ -1079,7 +1079,7 @@ dependencies = [
 
 [[package]]
 name = "rustforce"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cargo-license 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mockito 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
