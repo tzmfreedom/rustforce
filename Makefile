@@ -1,14 +1,15 @@
-BIN="main"
+BIN="query"
 
-.PHONY: run
+.PHONY: run test build
+
 run:
 	cargo run --example $(BIN)
 
-.PHONy: test
 test:
 	cargo test --lib
 
-.PHONY: build
 build:
+	cargo fmt && \
+	cargo clippy && \
 	cargo build
 

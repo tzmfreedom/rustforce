@@ -11,7 +11,7 @@ fn main() {
     let r = client.login_with_credential(username, password);
 
     if r.is_ok() {
-//        let res = client.describe("Account");
+        //        let res = client.describe("Account");
         let res = client.describe_global();
         println!("{:?}", res);
     }
