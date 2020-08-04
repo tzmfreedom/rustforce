@@ -8,7 +8,7 @@ pub enum Error {
     HTTPError(String),
     DeserializeError(String),
     ErrorResponses(Vec<ErrorResponse>),
-    DescribeError(ErrorResponse)
+    DescribeError(ErrorResponse),
 }
 
 impl std::error::Error for Error {}
@@ -22,13 +22,18 @@ impl fmt::Display for Error {
             Error::DeserializeError(resp) => write!(f, "Could not deserialize response {}", resp),
             Error::ErrorResponses(resp) => write!(f, "Error response from Salesforce {:?}", resp),
             Error::DescribeError(resp) => write!(f, "Error completing describe {:?}", resp),
-            _ => write!(f, "Unknown error"),
         }
     }
 }
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
+        Error::HTTPError(e.to_string())
+    }
+}
+
+impl From<reqwest::header::InvalidHeaderValue> for Error {
+    fn from(e: reqwest::header::InvalidHeaderValue) -> Self {
         Error::HTTPError(e.to_string())
     }
 }

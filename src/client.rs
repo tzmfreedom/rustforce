@@ -2,8 +2,8 @@ extern crate reqwest;
 
 use crate::errors::Error;
 use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
+    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, QueryResponse,
+    SearchResponse, TokenResponse, VersionResponse,
 };
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Response, StatusCode};
@@ -23,7 +23,7 @@ pub struct Client {
 impl Client {
     pub fn new(client_id: String, client_secret: String) -> Client {
         let http_client = reqwest::Client::new();
-        return Client {
+        Client {
             http_client,
             client_id,
             client_secret,
@@ -31,7 +31,7 @@ impl Client {
             access_token: None,
             instance_url: None,
             version: "v44.0".to_string(),
-        };
+        }
     }
 
     pub fn set_login_endpoint(&mut self, endpoint: &str) {
@@ -69,7 +69,7 @@ impl Client {
             .send()?;
 
         if res.status().is_success() {
-            let r: TokenResponse = res.json().unwrap();
+            let r: TokenResponse = res.json()?;
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
@@ -79,7 +79,7 @@ impl Client {
             Ok(())
         } else {
             let token_error = res.json()?;
-            return Err(Error::TokenError(token_error));
+            Err(Error::TokenError(token_error))
         }
     }
 
@@ -151,7 +151,10 @@ impl Client {
     }
 
     pub fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
-        let versions_url = format!("{}/services/data/", self.instance_url.as_ref().unwrap());
+        let versions_url = format!(
+            "{}/services/data/",
+            self.instance_url.as_ref().ok_or(Error::NotLoggedIn)?
+        );
         let mut res = self.get(versions_url, vec![])?;
         if res.status().is_success() {
             Ok(res.json()?)
@@ -200,7 +203,7 @@ impl Client {
         let mut res = self.patch(resource_url, params)?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(())
         } else {
             Err(Error::ErrorResponses(res.json()?))
         }
@@ -237,7 +240,7 @@ impl Client {
         let mut res = self.delete(resource_url)?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(())
         } else {
             Err(Error::ErrorResponses(res.json()?))
         }
@@ -265,50 +268,57 @@ impl Client {
         }
     }
 
-    fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, reqwest::Error> {
-        return self
+    fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+        let res = self
             .http_client
             .get(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .query(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
-    fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, reqwest::Error> {
-        return self
+    fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+        let res = self
             .http_client
             .post(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .json(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
-    fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, reqwest::Error> {
-        return self
+    fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+        let res = self
             .http_client
             .patch(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .json(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
-    fn delete(&self, url: String) -> Result<Response, reqwest::Error> {
-        return self
+    fn delete(&self, url: String) -> Result<Response, Error> {
+        let res = self
             .http_client
             .delete(url.as_str())
-            .headers(self.create_header())
-            .send();
+            .headers(self.create_header()?)
+            .send()?;
+        Ok(res)
     }
 
-    fn create_header(&self) -> HeaderMap {
+    fn create_header(&self) -> Result<HeaderMap, Error> {
         let mut headers = HeaderMap::new();
         headers.insert(
             AUTHORIZATION,
-            format!("Bearer {}", self.access_token.as_ref().unwrap().value)
-                .parse()
-                .unwrap(),
+            format!(
+                "Bearer {}",
+                self.access_token.as_ref().ok_or(Error::NotLoggedIn)?.value
+            )
+            .parse()?,
         );
-        return headers;
+
+        Ok(headers)
     }
 
     fn base_path(&self) -> String {
@@ -322,8 +332,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::response::{ErrorResponse, QueryResponse};
-    use mockito::{mock, Matcher};
+    use crate::response::{QueryResponse};
+    use mockito::{mock};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
@@ -491,6 +501,7 @@ mod tests {
 
         let client = create_test_client();
         let r = client.destroy("Account", "123");
+        println!("{:?}", r);
         assert_eq!(true, r.is_ok());
     }
 

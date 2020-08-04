@@ -9,7 +9,7 @@ Salesforce Client for Rust
 ## Usage
 
 ```rust
-use rustforce::Client;
+use rustforce::{Client, Error};
 use rustforce::response::{QueryResponse, ErrorResponse};
 use serde::Deserialize;
 use std::env;
@@ -30,17 +30,19 @@ struct Attribute {
     sobject_type: String,
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let client_id = env::var("SFDC_CLIENT_ID").unwrap();
     let client_secret = env::var("SFDC_CLIENT_SECRET").unwrap();
     let username = env::var("SFDC_USERNAME").unwrap();
     let password = env::var("SFDC_PASSWORD").unwrap();
 
     let mut client = Client::new(client_id, client_secret);
-    client.login_with_credential(username, password);
+    client.login_with_credential(username, password)?;
 
-    let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string());
+    let res: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string())?;
     println!("{:?}", res);
+
+    Ok(())
 }
 ```
 
@@ -49,7 +51,7 @@ fn main() {
 Username Password Flow
 ```rust
 let mut client = Client::new(client_id, client_secret);
-client.login_with_credential(username, password);
+client.login_with_credential(username, password)?;
 ```
 
 [WIP]Authorization Code Grant
@@ -63,19 +65,19 @@ let r = client.refresh("xxxx");
 ### Query Records
 
 ```rust
-let r: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account");
+let r: Result<QueryResponse<Account>, Error> = client.query("SELECT Id, Name FROM Account");
 ```
 
 ### Query All Records
 
 ```rust
-let r: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query_all("SELECT Id, Name FROM Account");
+let r: Result<QueryResponse<Account>, Error> = client.query_all("SELECT Id, Name FROM Account");
 ```
 
 ### Find By Id
 
 ```rust
-let r: Result<Account, Vec<ErrorResponse>> = client.find_by_id("Account", "{sf_id}");
+let r: Result<Account, Error> = client.find_by_id("Account", "{sf_id}");
 ```
 
 ### Create Record

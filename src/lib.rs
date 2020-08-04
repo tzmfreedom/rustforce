@@ -1,5 +1,6 @@
 pub mod client;
-pub mod response;
 pub mod errors;
+pub mod response;
 
 pub type Client = client::Client;
+pub type Error = errors::Error;
