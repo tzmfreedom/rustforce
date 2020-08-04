@@ -1,7 +1,7 @@
+use rustforce::response::{ErrorResponse, QueryResponse};
 use rustforce::Client;
-use rustforce::response::{QueryResponse, ErrorResponse};
-use std::env;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -29,7 +29,8 @@ fn main() {
     let r = client.login_with_credential(username, password);
 
     if r.is_ok() {
-        let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'");
+        let res: Result<QueryResponse<Account>, Vec<ErrorResponse>> =
+            client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'");
         println!("{:?}", res);
     }
 }

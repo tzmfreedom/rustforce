@@ -1,7 +1,7 @@
-use rustforce::Client;
-use std::env;
-use serde::Deserialize;
 use rustforce::response::ErrorResponse;
+use rustforce::Client;
+use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -29,7 +29,8 @@ fn main() {
     let r = client.login_with_credential(username, password);
 
     if r.is_ok() {
-        let res: Result<Account, Vec<ErrorResponse>> = client.find_by_id("Account", "0012K00001drfNGQAY");
+        let res: Result<Account, Vec<ErrorResponse>> =
+            client.find_by_id("Account", "0012K00001drfNGQAY");
         println!("{:?}", res);
     }
 }

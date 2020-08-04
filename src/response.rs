@@ -57,7 +57,7 @@ pub struct AccessToken {
 #[derive(Deserialize, Debug)]
 pub struct DescribeResponse {
     pub activateable: bool,
-//    pub action_overrides: ActionOverride[],
+    //    pub action_overrides: ActionOverride[],
     pub child_relationships: Vec<ChildRelationship>,
     pub compact_layoutable: bool,
     pub createable: bool,
@@ -78,15 +78,15 @@ pub struct DescribeResponse {
     pub mergeable: bool,
     pub mru_enabled: bool,
     pub name: String,
-//    pub named_layout_infos: [],
-//    pub network_scope_field_name: [],
+    //    pub named_layout_infos: [],
+    //    pub network_scope_field_name: [],
     pub queryable: bool,
-//    pub record_type_infos: Record_type_info[]
+    //    pub record_type_infos: Record_type_info[]
     pub replicateable: bool,
     pub retrieveable: bool,
     pub search_layoutable: bool,
     pub searchable: bool,
-//    pub supported_scopes:  Scope_info
+    //    pub supported_scopes:  Scope_info
     pub triggerable: bool,
     pub undeletable: bool,
     pub updateable: bool,
@@ -108,7 +108,7 @@ pub struct Field {
     pub controller_name: Option<String>,
     pub createable: bool,
     pub custom: bool,
-//    pub default_value: Option<String>,
+    //    pub default_value: Option<String>,
     pub default_value_formula: Option<String>,
     pub defaulted_on_create: bool,
     pub dependent_picklist: bool,
@@ -135,12 +135,12 @@ pub struct Field {
     pub name_pointing: bool,
     pub nillable: bool,
     pub permissionable: bool,
-//    pub picklist_values: [],
+    //    pub picklist_values: [],
     pub polymorphic_foreign_key: bool,
     pub precision: u8,
     pub query_by_distance: bool,
     pub reference_target_field: Option<String>,
-//    pub reference_to: [],
+    //    pub reference_to: [],
     pub relationship_name: Option<String>,
     pub relationship_order: Option<String>,
     pub restricted_delete: bool,
@@ -149,11 +149,11 @@ pub struct Field {
     pub search_prefilterable: bool,
     pub soap_type: String,
     pub sortable: bool,
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub field_type: String,
     pub unique: bool,
     pub updateable: bool,
-    pub write_requires_master_read: bool
+    pub write_requires_master_read: bool,
 }
 
 #[serde(rename_all = "camelCase")]
@@ -165,7 +165,7 @@ pub struct ChildRelationship {
     pub deprecated_and_hidden: bool,
     pub field: String,
     //    pub junction_id_list_names: [],
-//    pub junction_reference_to: [],
+    //    pub junction_reference_to: [],
     pub relationship_name: Option<String>,
     pub restricted_delete: bool,
 }
@@ -197,7 +197,7 @@ pub struct DescribeGlobalResponse {
 
 #[serde(rename_all = "camelCase")]
 #[derive(Deserialize, Debug)]
-pub struct DescribeGlobalSObjectResponse{
+pub struct DescribeGlobalSObjectResponse {
     pub activateable: bool,
     pub createable: bool,
     pub custom: bool,
@@ -228,7 +228,7 @@ pub struct DescribeGlobalSObjectResponse{
 #[derive(Deserialize, Debug)]
 pub struct SearchResponse {
     pub search_records: Vec<SearchRecord>,
-//    pub metadata: Metadata,
+    //    pub metadata: Metadata,
 }
 
 #[serde(rename_all = "camelCase")]

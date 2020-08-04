@@ -1,6 +1,6 @@
 use rustforce::Client;
-use std::env;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
