@@ -30,16 +30,17 @@ struct Attribute {
     sobject_type: String,
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let client_id = env::var("SFDC_CLIENT_ID").unwrap();
     let client_secret = env::var("SFDC_CLIENT_SECRET").unwrap();
     let username = env::var("SFDC_USERNAME").unwrap();
     let password = env::var("SFDC_PASSWORD").unwrap();
 
     let mut client = Client::new(client_id, client_secret);
-    client.login_with_credential(username, password)?;
+    client.login_with_credential(username, password).await?;
 
-    let res: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string())?;
+    let res: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'".to_string()).await?;
     println!("{:?}", res);
 
     Ok(())
@@ -51,7 +52,7 @@ fn main() -> Result<(), Error> {
 Username Password Flow
 ```rust
 let mut client = Client::new(client_id, client_secret);
-client.login_with_credential(username, password)?;
+client.login_with_credential(username, password).await?;
 ```
 
 [WIP]Authorization Code Grant
@@ -59,25 +60,25 @@ client.login_with_credential(username, password)?;
 ### Refresh Token
 
 ```rust
-let r = client.refresh("xxxx");
+let r = client.refresh("xxxx").await?;
 ```
 
 ### Query Records
 
 ```rust
-let r: Result<QueryResponse<Account>, Error> = client.query("SELECT Id, Name FROM Account");
+let r: Result<QueryResponse<Account>, Error> = client.query("SELECT Id, Name FROM Account").await?;
 ```
 
 ### Query All Records
 
 ```rust
-let r: Result<QueryResponse<Account>, Error> = client.query_all("SELECT Id, Name FROM Account");
+let r: Result<QueryResponse<Account>, Error> = client.query_all("SELECT Id, Name FROM Account").await?;
 ```
 
 ### Find By Id
 
 ```rust
-let r: Result<Account, Error> = client.find_by_id("Account", "{sf_id}");
+let r: Result<Account, Error> = client.find_by_id("Account", "{sf_id}").await?;
 ```
 
 ### Create Record
@@ -85,48 +86,48 @@ let r: Result<Account, Error> = client.find_by_id("Account", "{sf_id}");
 ```rust
 let mut params = HashMap::new();
 params.insert("Name", "hello rust");
-let r = client.create("Account", params);
+let r = client.create("Account", params).await?;
 println!("{:?}", r);
 ```
 
 ### Update Record
 
 ```rust
-let r = client.update("Account", "{sobject_id}", params);
+let r = client.update("Account", "{sobject_id}", params).await?;
 ```
 
 ### Upsert Record
 
 ```rust
-let r = client.upsert("Account", "{external_key_name}", "{external_key", params);
+let r = client.upsert("Account", "{external_key_name}", "{external_key", params).await?;
 ```
 
 ### Delete Record
 
 ```rust
-let r = client.destroy("Account", "{sobject_id}");
+let r = client.destroy("Account", "{sobject_id}").await?;
 ```
 
 ### Describe Global
 
 ```rust
-let r = client.describe_global();
+let r = client.describe_global().await?;
 ```
 
 ### Describe SObject
 
 ```rust
-let r = client.describe("Account");
+let r = client.describe("Account").await?;
 ```
 
 ### Versions
 
 ```rust
-let versions = client.versions();
+let versions = client.versions().await?;
 ```
 
 ### Search(SOSL)
 
 ```rust
-let r = client.search("FIND {Rust}");
+let r = client.search("FIND {Rust}").await?;
 ```

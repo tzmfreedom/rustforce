@@ -123,6 +123,7 @@ impl Client {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
         let res = self.get(query_url, params).await?;
+
         if res.status().is_success() {
             Ok(res.json().await?)
         } else {
@@ -341,7 +342,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::response::QueryResponse;
+    use crate::{errors::Error, response::QueryResponse};
     use mockito::mock;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -353,8 +354,8 @@ mod tests {
         name: String,
     }
 
-    #[test]
-    fn login_with_credentials() {
+    #[tokio::test]
+    async fn login_with_credentials() -> Result<(), Error> {
         let _m = mock("POST", "/services/oauth2/token")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -374,45 +375,53 @@ mod tests {
         let mut client = super::Client::new("aaa".to_string(), "bbb".to_string());
         let url = &mockito::server_url();
         client.set_login_endpoint(url);
-        let r = client.login_with_credential("u".to_string(), "p".to_string());
+        client
+            .login_with_credential("u".to_string(), "p".to_string())
+            .await?;
         let token = client.access_token.unwrap();
-        assert_eq!(true, r.is_ok());
         assert_eq!("this_is_access_token", token.value);
         assert_eq!("Bearer", token.token_type);
         assert_eq!("2019-10-01 00:00:00", token.issued_at);
         assert_eq!("https://ap.salesforce.com", client.instance_url.unwrap());
+
+        Ok(())
     }
 
-    #[test]
-    fn query() {
-        let _m = mock("GET", "/services/data/v44.0/query/")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(
-                json!({
-                    "totalSize": 123,
-                    "done": true,
-                    "records": vec![
-                        Account {
-                            id: "123".to_string(),
-                            name: "foo".to_string(),
-                        },
-                    ]
-                })
-                .to_string(),
-            )
-            .create();
+    #[tokio::test]
+    async fn query() -> Result<(), Error> {
+        let _m = mock(
+            "GET",
+            "/services/data/v44.0/query/?q=SELECT+Id%2C+Name+FROM+Account",
+        )
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            json!({
+                "totalSize": 123,
+                "done": true,
+                "records": vec![
+                    Account {
+                        id: "123".to_string(),
+                        name: "foo".to_string(),
+                    },
+                ]
+            })
+            .to_string(),
+        )
+        .create();
 
         let client = create_test_client();
-        let r: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account").unwrap();
+        let r: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account").await?;
         assert_eq!(123, r.total_size);
         assert_eq!(true, r.done);
         assert_eq!("123", r.records[0].id);
         assert_eq!("foo", r.records[0].name);
+
+        Ok(())
     }
 
-    #[test]
-    fn create() {
+    #[tokio::test]
+    async fn create() -> Result<(), Error> {
         let _m = mock("POST", "/services/data/v44.0/sobjects/Account")
             .with_status(201)
             .with_header("content-type", "application/json")
@@ -429,25 +438,31 @@ mod tests {
         let client = create_test_client();
         let r = client
             .create("Account", [("Name", "foo"), ("Abc__c", "123")])
-            .unwrap();
+            .await?;
         assert_eq!("12345", r.id);
         assert_eq!(true, r.success);
+
+        Ok(())
     }
 
-    #[test]
-    fn update() {
+    #[tokio::test]
+    async fn update() -> Result<(), Error> {
         let _m = mock("PATCH", "/services/data/v44.0/sobjects/Account/123")
             .with_status(204)
             .with_header("content-type", "application/json")
             .create();
 
         let client = create_test_client();
-        let r = client.update("Account", "123", [("Name", "foo"), ("Abc__c", "123")]);
+        let r = client
+            .update("Account", "123", [("Name", "foo"), ("Abc__c", "123")])
+            .await;
         assert_eq!(true, r.is_ok());
+
+        Ok(())
     }
 
-    #[test]
-    fn upsert_201() {
+    #[tokio::test]
+    async fn upsert_201() -> Result<(), Error> {
         let _m = mock(
             "PATCH",
             "/services/data/v44.0/sobjects/Account/ExKey__c/123",
@@ -472,15 +487,18 @@ mod tests {
                 "123",
                 [("Name", "foo"), ("Abc__c", "123")],
             )
+            .await
             .unwrap();
         assert_eq!(true, r.is_some());
         let res = r.unwrap();
         assert_eq!("12345", res.id);
         assert_eq!(true, res.success);
+
+        Ok(())
     }
 
-    #[test]
-    fn upsert_204() {
+    #[tokio::test]
+    async fn upsert_204() -> Result<(), Error> {
         let _m = mock(
             "PATCH",
             "/services/data/v44.0/sobjects/Account/ExKey__c/123",
@@ -497,25 +515,29 @@ mod tests {
                 "123",
                 [("Name", "foo"), ("Abc__c", "123")],
             )
+            .await
             .unwrap();
         assert_eq!(true, r.is_none());
+
+        Ok(())
     }
 
-    #[test]
-    fn destroy() {
+    #[tokio::test]
+    async fn destroy() -> Result<(), Error> {
         let _m = mock("DELETE", "/services/data/v44.0/sobjects/Account/123")
             .with_status(204)
             .with_header("content-type", "application/json")
             .create();
 
         let client = create_test_client();
-        let r = client.destroy("Account", "123");
+        let r = client.destroy("Account", "123").await?;
         println!("{:?}", r);
-        assert_eq!(true, r.is_ok());
+
+        Ok(())
     }
 
-    #[test]
-    fn versions() {
+    #[tokio::test]
+    async fn versions() -> Result<(), Error> {
         let _m = mock("GET", "/services/data/")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -530,14 +552,16 @@ mod tests {
             .create();
 
         let client = create_test_client();
-        let r = client.versions().unwrap();
+        let r = client.versions().await?;
         assert_eq!("Winter '19", r[0].label);
         assert_eq!("https://ap.salesforce.com/services/data/v44.0/", r[0].url);
         assert_eq!("v44.0", r[0].version);
+
+        Ok(())
     }
 
-    #[test]
-    fn find_by_id() {
+    #[tokio::test]
+    async fn find_by_id() -> Result<(), Error> {
         let _m = mock("GET", "/services/data/v44.0/sobjects/Account/123")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -551,8 +575,10 @@ mod tests {
             .create();
 
         let client = create_test_client();
-        let r: Account = client.find_by_id("Account", "123").unwrap();
+        let r: Account = client.find_by_id("Account", "123").await?;
         assert_eq!("foo", r.name);
+
+        Ok(())
     }
 
     fn create_test_client() -> super::Client {
