@@ -1,4 +1,4 @@
-BIN="query"
+BIN="find"
 
 .PHONY: run test build
 

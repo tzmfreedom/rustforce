@@ -54,7 +54,7 @@ impl Client {
         });
     }
 
-    pub fn refresh(&mut self, refresh_token: &str) -> Result<(), Error> {
+    pub async fn refresh(&mut self, refresh_token: &str) -> Result<(), Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "refresh_token"),
@@ -62,14 +62,15 @@ impl Client {
             ("client_id", self.client_id.as_str()),
             ("client_secret", self.client_secret.as_str()),
         ];
-        let mut res = self
+        let res = self
             .http_client
             .post(token_url.as_str())
             .form(&params)
-            .send()?;
+            .send()
+            .await?;
 
         if res.status().is_success() {
-            let r: TokenResponse = res.json()?;
+            let r: TokenResponse = res.json().await?;
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
@@ -78,12 +79,12 @@ impl Client {
             self.instance_url = Some(r.instance_url);
             Ok(())
         } else {
-            let token_error = res.json()?;
+            let token_error = res.json().await?;
             Err(Error::TokenError(token_error))
         }
     }
 
-    pub fn login_with_credential(
+    pub async fn login_with_credential(
         &mut self,
         username: String,
         password: String,
@@ -96,14 +97,15 @@ impl Client {
             ("username", username.as_str()),
             ("password", password.as_str()),
         ];
-        let mut res = self
+        let res = self
             .http_client
             .post(token_url.as_str())
             .form(&params)
-            .send()?;
+            .send()
+            .await?;
 
         if res.status().is_success() {
-            let r: TokenResponse = res.json()?;
+            let r: TokenResponse = res.json().await?;
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
@@ -112,104 +114,107 @@ impl Client {
             self.instance_url = Some(r.instance_url);
             Ok(())
         } else {
-            let error_response = res.json()?;
+            let error_response = res.json().await?;
             Err(Error::TokenError(error_response))
         }
     }
 
-    pub fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
+    pub async fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params)?;
+        let res = self.get(query_url, params).await?;
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn query_all<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
+    pub async fn query_all<T: DeserializeOwned>(
+        &self,
+        query: &str,
+    ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/queryAll/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params)?;
+        let res = self.get(query_url, params).await?;
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn search(&self, query: &str) -> Result<SearchResponse, Error> {
+    pub async fn search(&self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params)?;
+        let res = self.get(query_url, params).await?;
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
+    pub async fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
         let versions_url = format!(
             "{}/services/data/",
             self.instance_url.as_ref().ok_or(Error::NotLoggedIn)?
         );
-        let mut res = self.get(versions_url, vec![])?;
+        let res = self.get(versions_url, vec![]).await?;
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn find_by_id<T: DeserializeOwned>(
+    pub async fn find_by_id<T: DeserializeOwned>(
         &self,
         sobject_name: &str,
         id: &str,
     ) -> Result<T, Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.get(resource_url, vec![])?;
+        let res = self.get(resource_url, vec![]).await?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn create<T: Serialize>(
+    pub async fn create<T: Serialize>(
         &self,
         sobject_name: &str,
         params: T,
     ) -> Result<CreateResponse, Error> {
         let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
-        let mut res = self.post(resource_url, params)?;
+        let res = self.post(resource_url, params).await?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn update<T: Serialize>(
+    pub async fn update<T: Serialize>(
         &self,
         sobject_name: &str,
         id: &str,
         params: T,
     ) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.patch(resource_url, params)?;
+        let res = self.patch(resource_url, params).await?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn upsert<T: Serialize>(
+    pub async fn upsert<T: Serialize>(
         &self,
         sobject_name: &str,
         key_name: &str,
@@ -223,87 +228,91 @@ impl Client {
             key_name,
             key
         );
-        let mut res = self.patch(resource_url, params)?;
+        let res = self.patch(resource_url, params).await?;
 
         if res.status().is_success() {
             match res.status() {
-                StatusCode::CREATED => Ok(res.json()?),
+                StatusCode::CREATED => Ok(res.json().await?),
                 _ => Ok(None),
             }
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Error> {
+    pub async fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.delete(resource_url)?;
+        let res = self.delete(resource_url).await?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            Err(Error::ErrorResponses(res.json()?))
+            Err(Error::ErrorResponses(res.json().await?))
         }
     }
 
-    pub fn describe_global(&self) -> Result<DescribeGlobalResponse, Error> {
+    pub async fn describe_global(&self) -> Result<DescribeGlobalResponse, Error> {
         let resource_url = format!("{}/sobjects/", self.base_path());
-        let mut res = self.get(resource_url, vec![])?;
+        let res = self.get(resource_url, vec![]).await?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::DescribeError(res.json()?))
+            Err(Error::DescribeError(res.json().await?))
         }
     }
 
-    pub fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, Error> {
+    pub async fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, Error> {
         let resource_url = format!("{}/sobjects/{}/describe", self.base_path(), sobject_name);
-        let mut res = self.get(resource_url, vec![])?;
+        let res = self.get(resource_url, vec![]).await?;
 
         if res.status().is_success() {
-            Ok(res.json()?)
+            Ok(res.json().await?)
         } else {
-            Err(Error::DescribeError(res.json()?))
+            Err(Error::DescribeError(res.json().await?))
         }
     }
 
-    fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+    async fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
         let res = self
             .http_client
             .get(url.as_str())
             .headers(self.create_header()?)
             .query(&params)
-            .send()?;
+            .send()
+            .await?;
         Ok(res)
     }
 
-    fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+    async fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
         let res = self
             .http_client
             .post(url.as_str())
             .headers(self.create_header()?)
             .json(&params)
-            .send()?;
+            .send()
+            .await?;
         Ok(res)
     }
 
-    fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+    async fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
         let res = self
             .http_client
             .patch(url.as_str())
             .headers(self.create_header()?)
             .json(&params)
-            .send()?;
+            .send()
+            .await?;
         Ok(res)
     }
 
-    fn delete(&self, url: String) -> Result<Response, Error> {
+    async fn delete(&self, url: String) -> Result<Response, Error> {
         let res = self
             .http_client
             .delete(url.as_str())
             .headers(self.create_header()?)
-            .send()?;
+            .send()
+            .await?;
         Ok(res)
     }
 
@@ -332,8 +341,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::response::{QueryResponse};
-    use mockito::{mock};
+    use crate::response::QueryResponse;
+    use mockito::mock;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
