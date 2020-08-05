@@ -1,11 +1,12 @@
 extern crate reqwest;
 
+use crate::errors::Error;
 use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, SearchResponse, TokenErrorResponse, TokenResponse, VersionResponse,
+    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, QueryResponse,
+    SearchResponse, TokenResponse, VersionResponse,
 };
 use reqwest::header::{HeaderMap, AUTHORIZATION};
-use reqwest::{Error, Response, StatusCode};
+use reqwest::{Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -22,7 +23,7 @@ pub struct Client {
 impl Client {
     pub fn new(client_id: String, client_secret: String) -> Client {
         let http_client = reqwest::Client::new();
-        return Client {
+        Client {
             http_client,
             client_id,
             client_secret,
@@ -30,7 +31,7 @@ impl Client {
             access_token: None,
             instance_url: None,
             version: "v44.0".to_string(),
-        };
+        }
     }
 
     pub fn set_login_endpoint(&mut self, endpoint: &str) {
@@ -53,7 +54,7 @@ impl Client {
         });
     }
 
-    pub fn refresh(&mut self, refresh_token: &str) -> Result<(), TokenErrorResponse> {
+    pub fn refresh(&mut self, refresh_token: &str) -> Result<(), Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "refresh_token"),
@@ -65,10 +66,10 @@ impl Client {
             .http_client
             .post(token_url.as_str())
             .form(&params)
-            .send()
-            .unwrap();
+            .send()?;
+
         if res.status().is_success() {
-            let r: TokenResponse = res.json().unwrap();
+            let r: TokenResponse = res.json()?;
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
@@ -77,7 +78,8 @@ impl Client {
             self.instance_url = Some(r.instance_url);
             Ok(())
         } else {
-            Err(res.json().unwrap())
+            let token_error = res.json()?;
+            Err(Error::TokenError(token_error))
         }
     }
 
@@ -85,7 +87,7 @@ impl Client {
         &mut self,
         username: String,
         password: String,
-    ) -> Result<(), TokenErrorResponse> {
+    ) -> Result<(), Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "password"),
@@ -98,93 +100,97 @@ impl Client {
             .http_client
             .post(token_url.as_str())
             .form(&params)
-            .send()
-            .unwrap();
+            .send()?;
+
         if res.status().is_success() {
-            let r: TokenResponse = res.json().unwrap();
+            let r: TokenResponse = res.json()?;
             self.access_token = Some(AccessToken {
                 value: r.access_token,
                 issued_at: r.issued_at,
-                token_type: r.token_type.unwrap(),
+                token_type: r.token_type.ok_or(Error::NotLoggedIn)?,
             });
             self.instance_url = Some(r.instance_url);
             Ok(())
         } else {
-            Err(res.json().unwrap())
+            let error_response = res.json()?;
+            Err(Error::TokenError(error_response))
         }
     }
 
-    pub fn query<T: DeserializeOwned>(
-        &self,
-        query: &str,
-    ) -> Result<QueryResponse<T>, Vec<ErrorResponse>> {
+    pub fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params).unwrap();
+        let mut res = self.get(query_url, params)?;
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn query_all<T: DeserializeOwned>(
-        &self,
-        query: &str,
-    ) -> Result<QueryResponse<T>, Vec<ErrorResponse>> {
+    pub fn query_all<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/queryAll/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params).unwrap();
+        let mut res = self.get(query_url, params)?;
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn search(&self, query: &str) -> Result<SearchResponse, Vec<ErrorResponse>> {
+    pub fn search(&self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
         let params = vec![("q", query)];
-        let mut res = self.get(query_url, params).unwrap();
+        let mut res = self.get(query_url, params)?;
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn versions(&self) -> Result<Vec<VersionResponse>, Vec<ErrorResponse>> {
-        let versions_url = format!("{}/services/data/", self.instance_url.as_ref().unwrap());
-        let mut res = self.get(versions_url, vec![]).unwrap();
+    pub fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
+        let versions_url = format!(
+            "{}/services/data/",
+            self.instance_url.as_ref().ok_or(Error::NotLoggedIn)?
+        );
+        let mut res = self.get(versions_url, vec![])?;
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
     pub fn find_by_id<T: DeserializeOwned>(
         &self,
         sobject_name: &str,
         id: &str,
-    ) -> Result<T, Vec<ErrorResponse>> {
+    ) -> Result<T, Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.get(resource_url, vec![]).unwrap();
+        let mut res = self.get(resource_url, vec![])?;
 
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
     pub fn create<T: Serialize>(
         &self,
         sobject_name: &str,
         params: T,
-    ) -> Result<CreateResponse, Vec<ErrorResponse>> {
+    ) -> Result<CreateResponse, Error> {
         let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
-        let mut res = self.post(resource_url, params).unwrap();
+        let mut res = self.post(resource_url, params)?;
 
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
     pub fn update<T: Serialize>(
@@ -192,14 +198,15 @@ impl Client {
         sobject_name: &str,
         id: &str,
         params: T,
-    ) -> Result<(), Vec<ErrorResponse>> {
+    ) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.patch(resource_url, params).unwrap();
+        let mut res = self.patch(resource_url, params)?;
 
         if res.status().is_success() {
-            return Ok(());
+            Ok(())
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
     pub fn upsert<T: Serialize>(
@@ -208,7 +215,7 @@ impl Client {
         key_name: &str,
         key: &str,
         params: T,
-    ) -> Result<Option<CreateResponse>, Vec<ErrorResponse>> {
+    ) -> Result<Option<CreateResponse>, Error> {
         let resource_url = format!(
             "{}/sobjects/{}/{}/{}",
             self.base_path(),
@@ -216,91 +223,102 @@ impl Client {
             key_name,
             key
         );
-        let mut res = self.patch(resource_url, params).unwrap();
+        let mut res = self.patch(resource_url, params)?;
 
         if res.status().is_success() {
-            return match res.status() {
-                StatusCode::CREATED => Ok(res.json().unwrap()),
+            match res.status() {
+                StatusCode::CREATED => Ok(res.json()?),
                 _ => Ok(None),
-            };
+            }
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Vec<ErrorResponse>> {
+    pub fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
-        let mut res = self.delete(resource_url).unwrap();
+        let mut res = self.delete(resource_url)?;
 
         if res.status().is_success() {
-            return Ok(());
+            Ok(())
+        } else {
+            Err(Error::ErrorResponses(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn describe_global(&self) -> Result<DescribeGlobalResponse, ErrorResponse> {
+    pub fn describe_global(&self) -> Result<DescribeGlobalResponse, Error> {
         let resource_url = format!("{}/sobjects/", self.base_path());
-        let mut res = self.get(resource_url, vec![]).unwrap();
+        let mut res = self.get(resource_url, vec![])?;
 
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::DescribeError(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
-    pub fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, ErrorResponse> {
+    pub fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, Error> {
         let resource_url = format!("{}/sobjects/{}/describe", self.base_path(), sobject_name);
-        let mut res = self.get(resource_url, vec![]).unwrap();
+        let mut res = self.get(resource_url, vec![])?;
 
         if res.status().is_success() {
-            return Ok(res.json().unwrap());
+            Ok(res.json()?)
+        } else {
+            Err(Error::DescribeError(res.json()?))
         }
-        return Err(res.json().unwrap());
     }
 
     fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
-        return self
+        let res = self
             .http_client
             .get(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .query(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
     fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
-        return self
+        let res = self
             .http_client
             .post(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .json(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
     fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
-        return self
+        let res = self
             .http_client
             .patch(url.as_str())
-            .headers(self.create_header())
+            .headers(self.create_header()?)
             .json(&params)
-            .send();
+            .send()?;
+        Ok(res)
     }
 
     fn delete(&self, url: String) -> Result<Response, Error> {
-        return self
+        let res = self
             .http_client
             .delete(url.as_str())
-            .headers(self.create_header())
-            .send();
+            .headers(self.create_header()?)
+            .send()?;
+        Ok(res)
     }
 
-    fn create_header(&self) -> HeaderMap {
+    fn create_header(&self) -> Result<HeaderMap, Error> {
         let mut headers = HeaderMap::new();
         headers.insert(
             AUTHORIZATION,
-            format!("Bearer {}", self.access_token.as_ref().unwrap().value)
-                .parse()
-                .unwrap(),
+            format!(
+                "Bearer {}",
+                self.access_token.as_ref().ok_or(Error::NotLoggedIn)?.value
+            )
+            .parse()?,
         );
-        return headers;
+
+        Ok(headers)
     }
 
     fn base_path(&self) -> String {
@@ -314,8 +332,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::response::{ErrorResponse, QueryResponse};
-    use mockito::{mock, Matcher};
+    use crate::response::{QueryResponse};
+    use mockito::{mock};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
@@ -483,6 +501,7 @@ mod tests {
 
         let client = create_test_client();
         let r = client.destroy("Account", "123");
+        println!("{:?}", r);
         assert_eq!(true, r.is_ok());
     }
 
