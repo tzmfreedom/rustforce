@@ -34,7 +34,7 @@ jobs:
       SFDC_PASSWORD: ${{ secrets.SFDC_PASSWORD }}
     steps:
     - name: Run tests
-      run: cargo test --test '*'
+      run: cargo test --test integration_test
 
     
     
