@@ -33,6 +33,7 @@ jobs:
       SFDC_USERNAME: ${{ secrets.SFDC_USERNAME }}
       SFDC_PASSWORD: ${{ secrets.SFDC_PASSWORD }}
     steps:
+    - uses: actions/checkout@v2
     - name: Run tests
       run: cargo test --test integration_test
 
