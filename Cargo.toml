@@ -1,6 +1,6 @@
 [package]
 name = "rustforce"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["tzmfreedom <makoto_tajitsu@hotmail.co.jp>"]
 license = "MIT"
 description = "Salesforce REST API Client"
