@@ -10,6 +10,7 @@ use reqwest::{Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+/// Represents a Salesforce Client
 pub struct Client {
     http_client: reqwest::Client,
     client_id: String,
@@ -21,6 +22,8 @@ pub struct Client {
 }
 
 impl Client {
+    /// Creates a new client when passed a Client ID and Client Secret. These
+    /// can be obtained by creating a connected app in Salesforce
     pub fn new(client_id: String, client_secret: String) -> Client {
         let http_client = reqwest::Client::new();
         Client {
@@ -34,10 +37,13 @@ impl Client {
         }
     }
 
+    /// Set the login endpoint. This is useful if you want to connect to a
+    /// Sandbox
     pub fn set_login_endpoint(&mut self, endpoint: &str) {
         self.login_endpoint = endpoint.to_string();
     }
 
+    /// Set API Version
     pub fn set_version(&mut self, version: &str) {
         self.version = version.to_string();
     }
@@ -46,6 +52,8 @@ impl Client {
         self.instance_url = Some(instance_url.to_string());
     }
 
+    /// Set Access token if you've already obtained one via one of the OAuth2
+    /// flows
     pub fn set_access_token(&mut self, access_token: &str) {
         self.access_token = Some(AccessToken {
             token_type: "Bearer".to_string(),
@@ -54,6 +62,7 @@ impl Client {
         });
     }
 
+    /// This will fetch an access token when provided with a refresh token
     pub async fn refresh(&mut self, refresh_token: &str) -> Result<(), Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
@@ -84,6 +93,7 @@ impl Client {
         }
     }
 
+    /// Login to Salesforce with username and password
     pub async fn login_with_credential(
         &mut self,
         username: String,
@@ -119,6 +129,7 @@ impl Client {
         }
     }
 
+    /// Query record using SOQL
     pub async fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
@@ -131,6 +142,7 @@ impl Client {
         }
     }
 
+    /// Query All records using SOQL
     pub async fn query_all<T: DeserializeOwned>(
         &self,
         query: &str,
@@ -145,6 +157,7 @@ impl Client {
         }
     }
 
+    /// Find records using SOSL
     pub async fn search(&self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
         let params = vec![("q", query)];
@@ -156,6 +169,7 @@ impl Client {
         }
     }
 
+    /// Get all supported API versions
     pub async fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
         let versions_url = format!(
             "{}/services/data/",
@@ -169,6 +183,7 @@ impl Client {
         }
     }
 
+    /// Finds a record by ID
     pub async fn find_by_id<T: DeserializeOwned>(
         &self,
         sobject_name: &str,
@@ -184,6 +199,7 @@ impl Client {
         }
     }
 
+    /// Creates an SObject
     pub async fn create<T: Serialize>(
         &self,
         sobject_name: &str,
@@ -199,6 +215,7 @@ impl Client {
         }
     }
 
+    /// Updates an SObject
     pub async fn update<T: Serialize>(
         &self,
         sobject_name: &str,
@@ -215,6 +232,7 @@ impl Client {
         }
     }
 
+    /// Upserts an SObject with key
     pub async fn upsert<T: Serialize>(
         &self,
         sobject_name: &str,
@@ -241,6 +259,7 @@ impl Client {
         }
     }
 
+    /// Deletes an SObject
     pub async fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let res = self.delete(resource_url).await?;
@@ -252,6 +271,7 @@ impl Client {
         }
     }
 
+    /// Describes all objects
     pub async fn describe_global(&self) -> Result<DescribeGlobalResponse, Error> {
         let resource_url = format!("{}/sobjects/", self.base_path());
         let res = self.get(resource_url, vec![]).await?;
@@ -263,6 +283,7 @@ impl Client {
         }
     }
 
+    /// Describes specific object
     pub async fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, Error> {
         let resource_url = format!("{}/sobjects/{}/describe", self.base_path(), sobject_name);
         let res = self.get(resource_url, vec![]).await?;
