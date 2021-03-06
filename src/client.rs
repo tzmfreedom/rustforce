@@ -6,9 +6,10 @@ use crate::response::{
     SearchResponse, TokenResponse, VersionResponse,
 };
 use reqwest::header::{HeaderMap, AUTHORIZATION};
-use reqwest::{Response, StatusCode};
+use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::HashMap;
 
 /// Represents a Salesforce Client
 pub struct Client {
@@ -290,6 +291,27 @@ impl Client {
 
         if res.status().is_success() {
             Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn rest_get_fulluri(&self, uri: &str) -> Result<Response, Error> {
+        let resource_url = format!("{}/services/apexrest/{}",self.instance_url.as_ref().unwrap(), uri);
+        let parsed = Url::parse(&resource_url).unwrap();
+        // Some ownership absurdity for string refs accessed through iterators with collect
+        let hash_query: HashMap<_, _> = parsed.query_pairs().into_owned().collect();
+        let paramstrings: Vec<(String,String)> = hash_query.keys()
+            .map(|k| (String::from(k),String::from(&hash_query[k])))
+            .collect();
+        let params: Vec<(&str,&str)> = paramstrings.iter()
+            .map(|&(ref x, ref y)| (&x[..], &y[..]))
+            .collect();
+        let path: String = parsed.path().to_string();
+        let res = self.rest_get(path, params).await?;
+
+        if res.status().is_success() {
+            Ok(res)
         } else {
             Err(Error::DescribeError(res.json().await?))
         }
