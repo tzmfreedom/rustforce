@@ -6,9 +6,10 @@ use crate::response::{
     SearchResponse, TokenResponse, VersionResponse,
 };
 use reqwest::header::{HeaderMap, AUTHORIZATION};
-use reqwest::{Response, StatusCode};
+use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::HashMap;
 
 /// Represents a Salesforce Client
 pub struct Client {
@@ -295,6 +296,64 @@ impl Client {
         }
     }
 
+    pub async fn get_apexrest(&self, uri: &str) -> Result<Response, Error> {
+        let resource_url = format!("{}/{}", self.apex_path(), uri);
+        let parsed = Url::parse(&resource_url).unwrap();
+        // Some ownership absurdity for string refs accessed through iterators with collect
+        let hash_query: HashMap<_, _> = parsed.query_pairs().into_owned().collect();
+        let paramstrings: Vec<(String,String)> = hash_query.keys()
+            .map(|k| (String::from(k),String::from(&hash_query[k])))
+            .collect();
+        let params: Vec<(&str,&str)> = paramstrings.iter()
+            .map(|&(ref x, ref y)| (&x[..], &y[..]))
+            .collect();
+        // The actual URL sans params
+        let resource_url = format!("{}://{}{}",parsed.scheme(),parsed.host_str().unwrap(),parsed.path());
+        let res = self
+            .http_client
+            .get(resource_url.as_str())
+            .headers(self.create_header()?)
+            .query(&params)
+            .send()
+            .await?;
+
+        if res.status().is_success() {
+            Ok(res)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+    pub async fn post_apexrest<T: Serialize>(&self, uri: &str, params: T) -> Result<Response, Error> {
+        let resource_url = format!("{}/{}", self.apex_path(), uri);
+        let res = self.post(resource_url, params).await?;
+
+        if res.status().is_success() {
+            Ok(res)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+    pub async fn patch_apexrest<T: Serialize>(&self, uri: &str, params: T) -> Result<Response, Error> {
+        let resource_url = format!("{}/{}", self.apex_path(), uri);
+        let res = self.patch(resource_url, params).await?;
+
+        if res.status().is_success() {
+            Ok(res)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+    pub async fn delete_apexrest(&self, uri: &str) -> Result<Response, Error> {
+        let resource_url = format!("{}/{}", self.apex_path(), uri);
+        let res = self.delete(resource_url).await?;
+
+        if res.status().is_success() {
+            Ok(res)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
     async fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
         let res = self
             .http_client
@@ -358,6 +417,10 @@ impl Client {
             self.instance_url.as_ref().unwrap(),
             self.version
         )
+    }
+
+    fn apex_path(&self) -> String {
+        format!("{}/services/apexrest",self.instance_url.as_ref().unwrap())
     }
 }
 
