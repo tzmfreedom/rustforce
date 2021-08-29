@@ -297,14 +297,20 @@ impl Client {
     }
 
     pub async fn rest_get_fulluri(&self, uri: &str) -> Result<Response, Error> {
-        let resource_url = format!("{}/services/apexrest/{}",self.instance_url.as_ref().unwrap(), uri);
+        let resource_url = format!(
+            "{}/services/apexrest/{}",
+            self.instance_url.as_ref().unwrap(),
+            uri
+        );
         let parsed = Url::parse(&resource_url).unwrap();
         // Some ownership absurdity for string refs accessed through iterators with collect
         let hash_query: HashMap<_, _> = parsed.query_pairs().into_owned().collect();
-        let paramstrings: Vec<(String,String)> = hash_query.keys()
-            .map(|k| (String::from(k),String::from(&hash_query[k])))
+        let paramstrings: Vec<(String, String)> = hash_query
+            .keys()
+            .map(|k| (String::from(k), String::from(&hash_query[k])))
             .collect();
-        let params: Vec<(&str,&str)> = paramstrings.iter()
+        let params: Vec<(&str, &str)> = paramstrings
+            .iter()
             .map(|&(ref x, ref y)| (&x[..], &y[..]))
             .collect();
         let path: String = parsed.path().to_string();
@@ -317,12 +323,12 @@ impl Client {
         }
     }
 
-    pub async fn rest_get(&self, path: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
-        let url = format!(
-            "{}{}",
-            self.instance_url.as_ref().unwrap(),
-            path
-        );
+    pub async fn rest_get(
+        &self,
+        path: String,
+        params: Vec<(&str, &str)>,
+    ) -> Result<Response, Error> {
+        let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .get(url.as_str())
@@ -333,12 +339,12 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_post<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
-        let url = format!(
-            "{}{}",
-            self.instance_url.as_ref().unwrap(),
-            path
-        );
+    pub async fn rest_post<T: Serialize>(
+        &self,
+        path: String,
+        params: T,
+    ) -> Result<Response, Error> {
+        let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .post(url.as_str())
@@ -349,12 +355,12 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_patch<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
-        let url = format!(
-            "{}{}",
-            self.instance_url.as_ref().unwrap(),
-            path
-        );
+    pub async fn rest_patch<T: Serialize>(
+        &self,
+        path: String,
+        params: T,
+    ) -> Result<Response, Error> {
+        let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .patch(url.as_str())
@@ -366,11 +372,7 @@ impl Client {
     }
 
     pub async fn rest_put<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
-        let url = format!(
-            "{}{}",
-            self.instance_url.as_ref().unwrap(),
-            path
-        );
+        let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .put(url.as_str())
@@ -382,11 +384,7 @@ impl Client {
     }
 
     pub async fn rest_delete(&self, path: String) -> Result<Response, Error> {
-        let url = format!(
-            "{}{}",
-            self.instance_url.as_ref().unwrap(),
-            path
-        );
+        let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .delete(url.as_str())

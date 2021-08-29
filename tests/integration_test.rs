@@ -4,8 +4,8 @@ mod common;
 
 use anyhow::Result;
 use common::{create_account, delete_account, find_account, get_client, Account};
-use std::collections::HashMap;
 use rustforce::response::QueryResponse;
+use std::collections::HashMap;
 
 #[tokio::test]
 async fn create_find_delete_record() -> Result<()> {
