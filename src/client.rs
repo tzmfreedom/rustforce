@@ -365,7 +365,7 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn put<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
+    pub async fn rest_put<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
         let url = format!(
             "{}{}",
             self.instance_url.as_ref().unwrap(),
