@@ -13,3 +13,5 @@ build:
 	cargo clippy && \
 	cargo build
 
+publish/dryrun:
+	cargo publish --dry-run
