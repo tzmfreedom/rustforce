@@ -156,10 +156,8 @@ impl Client {
             .body(body)
             .header("Content-Type", "text/xml")
             .header("SOAPAction", "\"\"")
-            // .form(&params)
             .send()
             .await?;
-        // println!("{:?}", res.status().is_success());
         if res.status().is_success() {
             let body_response = res.text().await?;
             let re_access_token = Regex::new(r"<sessionId>([^<]+)</sessionId>").unwrap();
@@ -185,17 +183,11 @@ impl Client {
                     .as_str(),
                 "/services/",
             ));
-
-            // println!("{:?}", );
             Ok(())
         } else {
             let body_response = res.text().await?;
             let re_message = Regex::new(r"<faultstring>([^<]+)</faultstring>").unwrap();
             let re_error_code = Regex::new(r"<faultcode>([^<]+)</faultcode>").unwrap();
-            // println!(
-            //     "{:?}",
-            //     // re_error_code.captures(body_response.as_str()).unwrap().get(1)
-            // );
             Err(Error::LoginError(ErrorResponse {
                 message: String::from(
                     re_message
@@ -373,12 +365,12 @@ impl Client {
     }
 
     /// Describes specific object
-    pub async fn describe(&self, sobject_name: &str) -> Result<DescribeResponse, Error> {
+    pub async fn describe(&self, sobject_name: &str) -> Result<serde_json::Value, Error> {
         let resource_url = format!("{}/sobjects/{}/describe", self.base_path(), sobject_name);
         let res = self.get(resource_url, vec![]).await?;
 
         if res.status().is_success() {
-            Ok(res.json().await?)
+            Ok(serde_json::from_str(res.text().await?.as_str())?)
         } else {
             Err(Error::DescribeError(res.json().await?))
         }
