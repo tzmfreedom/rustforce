@@ -2,9 +2,11 @@ extern crate reqwest;
 
 use crate::errors::Error;
 use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, QueryResponse,
-    SearchResponse, TokenResponse, VersionResponse,
+    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
+    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
 };
+use crate::utils::substring_before;
+use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
@@ -127,6 +129,92 @@ impl Client {
         } else {
             let error_response = res.json().await?;
             Err(Error::TokenError(error_response))
+        }
+    }
+
+    pub async fn login_by_soap(&mut self, username: String, password: String) -> Result<(), Error> {
+        let token_url = format!(
+            "{login_endpoint}/services/Soap/u/{version}",
+            login_endpoint = self.login_endpoint,
+            version = self.version
+        );
+        let body = [
+            "<se:Envelope xmlns:se='http://schemas.xmlsoap.org/soap/envelope/'>",
+            "<se:Header/>",
+            "<se:Body>",
+            "<login xmlns='urn:partner.soap.sforce.com'>",
+            format!("<username>{}</username>", username).as_str(),
+            format!("<password>{}</password>", password).as_str(),
+            "</login>",
+            "</se:Body>",
+            "</se:Envelope>",
+        ]
+        .join("");
+        let res = self
+            .http_client
+            .post(token_url.as_str())
+            .body(body)
+            .header("Content-Type", "text/xml")
+            .header("SOAPAction", "\"\"")
+            // .form(&params)
+            .send()
+            .await?;
+        // println!("{:?}", res.status().is_success());
+        if res.status().is_success() {
+            let body_response = res.text().await?;
+            let re_access_token = Regex::new(r"<sessionId>([^<]+)</sessionId>").unwrap();
+            let re_instance_url = Regex::new(r"<serverUrl>([^<]+)</serverUrl>").unwrap();
+            self.access_token = Some(AccessToken {
+                value: String::from(
+                    re_access_token
+                        .captures(body_response.as_str())
+                        .unwrap()
+                        .get(1)
+                        .unwrap()
+                        .as_str(),
+                ),
+                issued_at: "".to_string(),
+                token_type: "Bearer".to_string(),
+            });
+            self.instance_url = Some(substring_before(
+                re_instance_url
+                    .captures(body_response.as_str())
+                    .unwrap()
+                    .get(1)
+                    .unwrap()
+                    .as_str(),
+                "/services/",
+            ));
+
+            // println!("{:?}", );
+            Ok(())
+        } else {
+            let body_response = res.text().await?;
+            let re_message = Regex::new(r"<faultstring>([^<]+)</faultstring>").unwrap();
+            let re_error_code = Regex::new(r"<faultcode>([^<]+)</faultcode>").unwrap();
+            // println!(
+            //     "{:?}",
+            //     // re_error_code.captures(body_response.as_str()).unwrap().get(1)
+            // );
+            Err(Error::LoginError(ErrorResponse {
+                message: String::from(
+                    re_message
+                        .captures(body_response.as_str())
+                        .unwrap()
+                        .get(1)
+                        .unwrap()
+                        .as_str(),
+                ),
+                error_code: String::from(
+                    re_error_code
+                        .captures(body_response.as_str())
+                        .unwrap()
+                        .get(1)
+                        .unwrap()
+                        .as_str(),
+                ),
+                fields: None,
+            }))
         }
     }
 
