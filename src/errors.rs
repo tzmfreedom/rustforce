@@ -9,6 +9,7 @@ pub enum Error {
     DeserializeError(String),
     ErrorResponses(Vec<ErrorResponse>),
     DescribeError(ErrorResponse),
+    LoginError(ErrorResponse),
 }
 
 impl std::error::Error for Error {}
@@ -22,6 +23,7 @@ impl fmt::Display for Error {
             Error::DeserializeError(resp) => write!(f, "Could not deserialize response {}", resp),
             Error::ErrorResponses(resp) => write!(f, "Error response from Salesforce {:?}", resp),
             Error::DescribeError(resp) => write!(f, "Error completing describe {:?}", resp),
+            Error::LoginError(resp) => write!(f, "Error logging in {:?}", resp),
         }
     }
 }

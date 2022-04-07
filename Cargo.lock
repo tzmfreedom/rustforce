@@ -1073,6 +1073,7 @@ dependencies = [
  "cargo-license",
  "env_logger",
  "mockito",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
