@@ -16,8 +16,8 @@ use std::collections::HashMap;
 /// Represents a Salesforce Client
 pub struct Client {
     http_client: reqwest::Client,
-    client_id: String,
-    client_secret: String,
+    client_id: Option<String>,
+    client_secret: Option<String>,
     login_endpoint: String,
     instance_url: Option<String>,
     access_token: Option<AccessToken>,
@@ -27,7 +27,7 @@ pub struct Client {
 impl Client {
     /// Creates a new client when passed a Client ID and Client Secret. These
     /// can be obtained by creating a connected app in Salesforce
-    pub fn new(client_id: String, client_secret: String) -> Client {
+    pub fn new(client_id: Option<String>, client_secret: Option<String>) -> Self {
         let http_client = reqwest::Client::new();
         Client {
             http_client,
@@ -42,37 +42,41 @@ impl Client {
 
     /// Set the login endpoint. This is useful if you want to connect to a
     /// Sandbox
-    pub fn set_login_endpoint(&mut self, endpoint: &str) {
+    pub fn set_login_endpoint(&mut self, endpoint: &str) -> &mut Self {
         self.login_endpoint = endpoint.to_string();
+        self
     }
 
     /// Set API Version
-    pub fn set_version(&mut self, version: &str) {
+    pub fn set_version(&mut self, version: &str) -> &mut Self {
         self.version = version.to_string();
+        self
     }
 
-    pub fn set_instance_url(&mut self, instance_url: &str) {
+    pub fn set_instance_url(&mut self, instance_url: &str) -> &mut Self {
         self.instance_url = Some(instance_url.to_string());
+        self
     }
 
     /// Set Access token if you've already obtained one via one of the OAuth2
     /// flows
-    pub fn set_access_token(&mut self, access_token: &str) {
+    pub fn set_access_token(&mut self, access_token: &str) -> &mut Self {
         self.access_token = Some(AccessToken {
             token_type: "Bearer".to_string(),
             value: access_token.to_string(),
             issued_at: "".to_string(),
         });
+        self
     }
 
     /// This will fetch an access token when provided with a refresh token
-    pub async fn refresh(&mut self, refresh_token: &str) -> Result<(), Error> {
+    pub async fn refresh(&mut self, refresh_token: &str) -> Result<&mut Self, Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "refresh_token"),
             ("refresh_token", refresh_token),
-            ("client_id", self.client_id.as_str()),
-            ("client_secret", self.client_secret.as_str()),
+            ("client_id", self.client_id.as_ref().unwrap()),
+            ("client_secret", self.client_secret.as_ref().unwrap()),
         ];
         let res = self
             .http_client
@@ -89,7 +93,7 @@ impl Client {
                 token_type: "Bearer".to_string(),
             });
             self.instance_url = Some(r.instance_url);
-            Ok(())
+            Ok(self)
         } else {
             let token_error = res.json().await?;
             Err(Error::TokenError(token_error))
@@ -101,12 +105,12 @@ impl Client {
         &mut self,
         username: String,
         password: String,
-    ) -> Result<(), Error> {
+    ) -> Result<&mut Self, Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "password"),
-            ("client_id", self.client_id.as_str()),
-            ("client_secret", self.client_secret.as_str()),
+            ("client_id", self.client_id.as_ref().unwrap()),
+            ("client_secret", self.client_secret.as_ref().unwrap()),
             ("username", username.as_str()),
             ("password", password.as_str()),
         ];
@@ -125,14 +129,14 @@ impl Client {
                 token_type: r.token_type.ok_or(Error::NotLoggedIn)?,
             });
             self.instance_url = Some(r.instance_url);
-            Ok(())
+            Ok(self)
         } else {
             let error_response = res.json().await?;
             Err(Error::TokenError(error_response))
         }
     }
 
-    pub async fn login_by_soap(&mut self, username: String, password: String) -> Result<(), Error> {
+    pub async fn login_by_soap(&mut self, username: String, password: String) -> Result<&mut Self, Error> {
         let token_url = format!(
             "{login_endpoint}/services/Soap/u/{version}",
             login_endpoint = self.login_endpoint,
@@ -183,7 +187,7 @@ impl Client {
                     .as_str(),
                 "/services/",
             ));
-            Ok(())
+            Ok(self)
         } else {
             let body_response = res.text().await?;
             let re_message = Regex::new(r"<faultstring>([^<]+)</faultstring>").unwrap();
@@ -572,7 +576,7 @@ mod tests {
             )
             .create();
 
-        let mut client = super::Client::new("aaa".to_string(), "bbb".to_string());
+        let mut client = super::Client::new(Some("aaa".to_string()), Some("bbb".to_string()));
         let url = &mockito::server_url();
         client.set_login_endpoint(url);
         client
@@ -782,7 +786,7 @@ mod tests {
     }
 
     fn create_test_client() -> super::Client {
-        let mut client = super::Client::new("aaa".to_string(), "bbb".to_string());
+        let mut client = super::Client::new(Some("aaa".to_string()), Some("bbb".to_string()));
         let url = &mockito::server_url();
         client.set_instance_url(url);
         client.set_access_token("this_is_access_token");
