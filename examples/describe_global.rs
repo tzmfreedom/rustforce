@@ -11,7 +11,7 @@ async fn main() -> Result<(), Error> {
     let mut client = Client::new(client_id, client_secret);
     client.login_with_credential(username, password).await?;
 
-    let res = client.describe("Account").await?;
+    let res = client.describe_global().await?;
     println!("{:?}", res);
 
     Ok(())
