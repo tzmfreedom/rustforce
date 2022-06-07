@@ -2,8 +2,8 @@ extern crate reqwest;
 
 use crate::errors::Error;
 use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
+    AccessToken, CreateResponse, DescribeGlobalResponse, ErrorResponse, QueryResponse,
+    SearchResponse, TokenResponse, VersionResponse,
 };
 use crate::utils::substring_before;
 use regex::Regex;
