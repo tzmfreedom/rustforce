@@ -8,6 +8,7 @@ use std::collections::HashMap;
 pub struct QueryResponse<T> {
     pub total_size: i32,
     pub done: bool,
+    pub next_records_url: Option<String>,
     pub records: Vec<T>,
 }
 

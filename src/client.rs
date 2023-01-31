@@ -6,6 +6,8 @@ use crate::response::{
     QueryResponse, SearchResponse, TokenResponse, VersionResponse,
 };
 use crate::utils::substring_before;
+
+use async_recursion::async_recursion;
 use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Response, StatusCode, Url};
@@ -215,28 +217,37 @@ impl Client {
     }
 
     /// Query record using SOQL
-    pub async fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
-        let query_url = format!("{}/query/", self.base_path());
-        let params = vec![("q", query)];
-        let res = self.get(query_url, params).await?;
-
-        if res.status().is_success() {
-            Ok(res.json().await?)
-        } else {
-            Err(Error::ErrorResponses(res.json().await?))
-        }
+    pub async fn query<T: DeserializeOwned + Send>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
+        self.query_with(query, "query").await
     }
 
     /// Query All records using SOQL
-    pub async fn query_all<T: DeserializeOwned>(
-        &self,
-        query: &str,
-    ) -> Result<QueryResponse<T>, Error> {
-        let query_url = format!("{}/queryAll/", self.base_path());
-        let params = vec![("q", query)];
-        let res = self.get(query_url, params).await?;
+    pub async fn query_all<T: DeserializeOwned + Send>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
+        self.query_with(query, "queryAll").await
+    }
+
+    #[async_recursion]
+    async fn query_with<T: DeserializeOwned + Send>(&self, query: &str, query_with: &str) -> Result<QueryResponse<T>, Error> {
+        // Recursive query starts with /services/data/
+        let res = if query.starts_with("/services/data/") {
+            let query_url = format!("{}{}", self.instance_url.as_ref().unwrap(), query.to_string());
+            self.get(query_url, vec!()).await?
+        } else {
+            let query_url = format!("{}/{}/", self.base_path(), query_with);
+            let params = vec![("q", query)];
+            self.get(query_url, params).await?
+        };
+
         if res.status().is_success() {
-            Ok(res.json().await?)
+            let mut json: QueryResponse<T> = res.json().await?;
+            if !json.done {
+                let next_records_url = json.next_records_url.as_ref().unwrap();
+                let mut recursirve_json: QueryResponse<T> = self.query(&next_records_url).await?;
+                recursirve_json.records.append(&mut json.records);
+                Ok(recursirve_json)
+            } else {
+                Ok(json)
+            }
         } else {
             Err(Error::ErrorResponses(res.json().await?))
         }
