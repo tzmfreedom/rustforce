@@ -243,11 +243,11 @@ impl Client {
             if !json.done {
                 let next_records_url = json.next_records_url.as_ref().unwrap();
                 let mut recursive_json: QueryResponse<T> = self.query(&next_records_url).await?;
-                recursive_json.records.append(&mut json.records);
-                Ok(recursive_json)
-            } else {
-                Ok(json)
+                json.records.append(&mut recursive_json.records);
+                json.next_records_url = recursive_json.next_records_url;
+                json.done = recursive_json.done;
             }
+            Ok(json)
         } else {
             Err(Error::ErrorResponses(res.json().await?))
         }
