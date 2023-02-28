@@ -68,6 +68,10 @@ impl Client {
         });
         self
     }
+    
+    pub fn get_access_token(&mut self) -> String {
+        return self.access_token.unwrap().value.to_string();
+    }
 
     /// This will fetch an access token when provided with a refresh token
     pub async fn refresh(&mut self, refresh_token: &str) -> Result<&mut Self, Error> {
