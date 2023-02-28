@@ -46,7 +46,7 @@ pub struct TokenErrorResponse {
     error_description: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AccessToken {
     pub token_type: String,
     pub value: String,
