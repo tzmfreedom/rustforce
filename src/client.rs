@@ -71,7 +71,14 @@ impl Client {
     }
     
     pub fn get_access_token(&mut self) -> String {
-        return self.access_token.unwrap().value.to_string();
+        match &self.access_token {
+            Some(token) => {
+                return format!("{}", token.value);
+            },
+            None => {
+                return "".to_string();
+            }
+        }
     }
 
     /// This will fetch an access token when provided with a refresh token
@@ -594,6 +601,12 @@ mod tests {
         assert_eq!("https://ap.salesforce.com", client.instance_url.unwrap());
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn can_get_access_token() {
+        let mut client = create_test_client();
+        assert_eq!("this_is_access_token", client.get_access_token());
     }
 
     #[tokio::test]
