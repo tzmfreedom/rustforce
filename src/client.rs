@@ -257,11 +257,10 @@ impl Client {
     /// Query More records using SOQL
     pub async fn query_more<T: DeserializeOwned>(
         &self,
-        query: &str,
+        next_records_url: &str,
     ) -> Result<QueryResponse<T>, Error> {
-        let query_url = format!("{}/queryMore/", self.base_path());
-        let params = vec![("q", query)];
-        let res = self.get(query_url, params).await?;
+        let query_url = format!("{}/queryMore/{}", self.base_path(), next_records_url);
+        let res = self.get(query_url).await?;
         if res.status().is_success() {
             Ok(res.json().await?)
         } else {
