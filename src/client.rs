@@ -261,19 +261,8 @@ impl Client {
     ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/{}", self.instance_url.as_ref().unwrap(), next_records_url);
         let res = self.get(query_url, vec![]).await?;
-        if res.status().is_success() {
-           // Capture the raw response body
-            let raw_body = res.text().await?;
-
-            // Print the raw response body for debugging
-            println!("Raw JSON: {}", raw_body);
-
-            // Attempt to deserialize the raw body into QueryResponse<T>
-            let query_response: QueryResponse<T> = serde_json::from_str(&raw_body)?;
-
-            Ok(query_response)
-
-
+          if res.status().is_success() {
+            Ok(res.json().await?)
         } else {
             Err(Error::ErrorResponses(res.json().await?))
         }
