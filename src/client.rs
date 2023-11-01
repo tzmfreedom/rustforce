@@ -264,7 +264,7 @@ impl Client {
         if res.status().is_success() {
             match res.json().await {
                 Ok(r) => Ok(r),
-                Err(e) => Err(e)
+                Err(e) => Err(Error::ErrorResponses(res.json().await?))
             }
         } else {
             Err(Error::ErrorResponses(res.json().await?))
