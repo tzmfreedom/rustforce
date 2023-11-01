@@ -11,21 +11,6 @@ pub struct QueryResponse<T> {
     pub records: Vec<T>,
     pub next_records_url: Option<String>,
 }
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct QueryResponseLOL<T> {
-    pub total_size: i32,
-    pub done: bool,
-    pub records: Vec<T>,
-}
-
-
-#[derive(Debug, Deserialize)]
-pub struct NextRecordUrl {
-    pub url: String,
-}
-
 #[derive(Deserialize, Debug)]
 pub struct CreateResponse {
     pub id: String,
