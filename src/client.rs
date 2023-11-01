@@ -3,7 +3,7 @@ extern crate reqwest;
 use crate::errors::Error;
 use crate::response::{
     AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, QueryResponseLOL, SearchResponse, TokenResponse, VersionResponse,
+    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
 };
 use crate::utils::substring_before;
 use regex::Regex;
@@ -258,7 +258,7 @@ impl Client {
     pub async fn query_more<T: DeserializeOwned>(
         &self,
         next_records_url: &str,
-    ) -> Result<QueryResponseLOL<T>, Error> {
+    ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/{}", self.instance_url.as_ref().unwrap(), next_records_url);
         let res = self.get(query_url, vec![]).await?;
         if res.status().is_success() {
