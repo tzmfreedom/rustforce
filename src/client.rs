@@ -260,7 +260,7 @@ impl Client {
         next_records_url: &str,
     ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/{}", self.base_path(), next_records_url);
-        println!(query_url);
+        print!("{}", query_url);
         let res = self.get(query_url, vec![]).await?;
         if res.status().is_success() {
             Ok(res.json().await?)
