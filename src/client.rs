@@ -254,6 +254,21 @@ impl Client {
         }
     }
 
+    /// Query More records using SOQL
+    pub async fn query_more<T: DeserializeOwned>(
+        &self,
+        query: &str,
+    ) -> Result<QueryResponse<T>, Error> {
+        let query_url = format!("{}/queryMore/", self.base_path());
+        let params = vec![("q", query)];
+        let res = self.get(query_url, params).await?;
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::ErrorResponses(res.json().await?))
+        }
+    }
+
     /// Find records using SOSL
     pub async fn search(&self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
