@@ -262,10 +262,7 @@ impl Client {
         let query_url = format!("{}/{}", self.instance_url.as_ref().unwrap(), next_records_url);
         let res = self.get(query_url, vec![]).await?;
         if res.status().is_success() {
-            match res.json().await {
-                Ok(r) => Ok(r),
-                Err(e) => Err(Error::ErrorResponses(res.json().await?))
-            }
+            Ok(res.json().await?)
         } else {
             Err(Error::ErrorResponses(res.json().await?))
         }
