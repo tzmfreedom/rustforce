@@ -9,7 +9,12 @@ pub struct QueryResponse<T> {
     pub total_size: i32,
     pub done: bool,
     pub records: Vec<T>,
-    pub next_records_url: Option<String>,
+    pub next_records_url: Option<NextRecordUrl>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NextRecordUrl {
+    pub url: String,
 }
 
 #[derive(Deserialize, Debug)]
