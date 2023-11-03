@@ -7,8 +7,19 @@ use std::collections::HashMap;
 #[serde(rename_all = "camelCase")]
 pub struct QueryResponse<T> {
     pub total_size: i32,
+    /// This field will always be true and will be removed in a future version
     pub done: bool,
     pub records: Vec<T>,
+}
+
+// Internal response field for handling individual pages of a response.
+// Is converted into a QueryResponse before being exposed externally.
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct QueryPageResponse<T> {
+    pub total_size: i32,
+    pub records: Vec<T>,
+    pub next_records_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

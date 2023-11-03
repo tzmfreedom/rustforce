@@ -3,7 +3,7 @@ extern crate reqwest;
 use crate::errors::Error;
 use crate::response::{
     AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
+    QueryPageResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse,
 };
 use crate::utils::substring_before;
 use regex::Regex;
@@ -136,7 +136,11 @@ impl Client {
         }
     }
 
-    pub async fn login_by_soap(&mut self, username: String, password: String) -> Result<&mut Self, Error> {
+    pub async fn login_by_soap(
+        &mut self,
+        username: String,
+        password: String,
+    ) -> Result<&mut Self, Error> {
         let token_url = format!(
             "{login_endpoint}/services/Soap/u/{version}",
             login_endpoint = self.login_endpoint,
@@ -214,27 +218,90 @@ impl Client {
         }
     }
 
-    /// Query record using SOQL
+    /// Query record using SOQL.
+    /// Accumulates and returns all pages of results.
     pub async fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
-        let res = self.get(query_url, params).await?;
 
-        if res.status().is_success() {
-            Ok(res.json().await?)
-        } else {
-            Err(Error::ErrorResponses(res.json().await?))
+        // Fetch the first page
+        let mut response: QueryPageResponse<T> = self.query_single_page(query_url, params).await?;
+
+        // Build our final result object
+        let mut result = QueryResponse {
+            total_size: response.total_size,
+            done: true,
+            records: response.records,
+        };
+
+        // Keep fetching pages until we get them all
+        while let Some(next_records_path) = response.next_records_url {
+            response = self
+                .query_single_page(
+                    format!(
+                        "{}{}",
+                        self.instance_url.as_ref().unwrap(),
+                        next_records_path
+                    ),
+                    vec![],
+                )
+                .await?;
+
+            // Accumulate each new page of results onto our response
+            result.records.append(&mut response.records);
+            result.total_size += response.total_size;
         }
+
+        Ok(result)
     }
 
     /// Query All records using SOQL
+    /// Accumulates and returns all pages of results.
     pub async fn query_all<T: DeserializeOwned>(
         &self,
         query: &str,
     ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/queryAll/", self.base_path());
         let params = vec![("q", query)];
+
+        // Fetch the first page
+        let mut response: QueryPageResponse<T> = self.query_single_page(query_url, params).await?;
+
+        // Build our final result object
+        let mut result = QueryResponse {
+            total_size: response.total_size,
+            done: true,
+            records: response.records,
+        };
+
+        // Keep fetching pages until we get them all
+        while let Some(next_records_path) = response.next_records_url {
+            response = self
+                .query_single_page(
+                    format!(
+                        "{}{}",
+                        self.instance_url.as_ref().unwrap(),
+                        next_records_path
+                    ),
+                    vec![],
+                )
+                .await?;
+
+            // Accumulate each new page of results onto our response
+            result.records.append(&mut response.records);
+            result.total_size += response.total_size;
+        }
+
+        Ok(result)
+    }
+
+    async fn query_single_page<T: DeserializeOwned>(
+        &self,
+        query_url: String,
+        params: Vec<(&str, &str)>,
+    ) -> Result<QueryPageResponse<T>, Error> {
         let res = self.get(query_url, params).await?;
+
         if res.status().is_success() {
             Ok(res.json().await?)
         } else {
