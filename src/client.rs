@@ -2,8 +2,8 @@ extern crate reqwest;
 
 use crate::errors::Error;
 use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryPageResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse,
+    AccessToken, CreateResponse, DescribeGlobalResponse, ErrorResponse, QueryPageResponse,
+    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
 };
 use crate::utils::substring_before;
 use regex::Regex;
@@ -460,10 +460,8 @@ impl Client {
             .keys()
             .map(|k| (String::from(k), String::from(&hash_query[k])))
             .collect();
-        let params: Vec<(&str, &str)> = paramstrings
-            .iter()
-            .map(|&(ref x, ref y)| (&x[..], &y[..]))
-            .collect();
+        let params: Vec<(&str, &str)> =
+            paramstrings.iter().map(|(x, y)| (&x[..], &y[..])).collect();
         let path: String = parsed.path().to_string();
         let res = self.rest_get(path, params).await?;
 
