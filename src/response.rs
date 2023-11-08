@@ -54,7 +54,7 @@ pub struct AccessToken {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct DescribeResponse {
     pub activateable: bool,
     //    pub action_overrides: ActionOverride[],
@@ -94,7 +94,7 @@ pub struct DescribeResponse {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct Field {
     pub aggregatable: bool,
     pub ai_prediction_field: bool,
@@ -188,7 +188,7 @@ pub struct Urls {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct DescribeGlobalResponse {
     pub encoding: String,
     pub max_batch_size: u16,
@@ -196,7 +196,7 @@ pub struct DescribeGlobalResponse {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct DescribeGlobalSObjectResponse {
     pub activateable: bool,
     pub createable: bool,
