@@ -14,7 +14,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 /// Represents a Salesforce Client
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Client {
     http_client: reqwest::Client,
     client_id: Option<String>,
