@@ -3,7 +3,7 @@ extern crate reqwest;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResponse<T> {
     pub total_size: i32,
@@ -11,18 +11,18 @@ pub struct QueryResponse<T> {
     pub records: Vec<T>,
     pub next_records_url: Option<String>,
 }
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct CreateResponse {
     pub id: String,
     pub success: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct UpsertResponse {
     create: Option<CreateResponse>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {
     pub message: String,
@@ -30,7 +30,7 @@ pub struct ErrorResponse {
     pub fields: Option<Vec<String>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct TokenResponse {
     pub id: String,
     pub issued_at: String,
@@ -40,7 +40,7 @@ pub struct TokenResponse {
     pub token_type: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct TokenErrorResponse {
     error: String,
     error_description: String,
@@ -171,7 +171,7 @@ pub struct ChildRelationship {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct Urls {
     pub compact_layouts: String,
     pub row_template: String,
@@ -225,14 +225,14 @@ pub struct DescribeGlobalSObjectResponse {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct SearchResponse {
     pub search_records: Vec<SearchRecord>,
     //    pub metadata: Metadata,
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct SearchRecord {
     #[serde(rename = "Id")]
     pub id: String,
@@ -240,7 +240,7 @@ pub struct SearchRecord {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct SObjectAttribute {
     #[serde(rename = "type")]
     pub sobject_type: String,
@@ -248,7 +248,7 @@ pub struct SObjectAttribute {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct VersionResponse {
     pub label: String,
     pub url: String,
