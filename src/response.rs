@@ -157,7 +157,7 @@ pub struct Field {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug)]
 pub struct ChildRelationship {
     pub cascade_delete: bool,
     #[serde(rename = "childSObject")]
