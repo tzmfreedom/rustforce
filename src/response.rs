@@ -53,8 +53,8 @@ pub struct AccessToken {
     pub issued_at: String,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DescribeResponse {
     pub activateable: bool,
     //    pub action_overrides: ActionOverride[],
@@ -93,8 +93,8 @@ pub struct DescribeResponse {
     pub urls: Urls,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Field {
     pub aggregatable: bool,
     pub ai_prediction_field: bool,
@@ -156,8 +156,8 @@ pub struct Field {
     pub write_requires_master_read: bool,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ChildRelationship {
     pub cascade_delete: bool,
     #[serde(rename = "childSObject")]
@@ -170,8 +170,8 @@ pub struct ChildRelationship {
     pub restricted_delete: bool,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Urls {
     pub compact_layouts: String,
     pub row_template: String,
@@ -187,16 +187,16 @@ pub struct Urls {
     pub sobject: String,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DescribeGlobalResponse {
     pub encoding: String,
     pub max_batch_size: u16,
     pub sobjects: Vec<DescribeGlobalSObjectResponse>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DescribeGlobalSObjectResponse {
     pub activateable: bool,
     pub createable: bool,
@@ -224,31 +224,31 @@ pub struct DescribeGlobalSObjectResponse {
     pub urls: HashMap<String, String>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub search_records: Vec<SearchRecord>,
     //    pub metadata: Metadata,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchRecord {
     #[serde(rename = "Id")]
     pub id: String,
     pub attributes: SObjectAttribute,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SObjectAttribute {
     #[serde(rename = "type")]
     pub sobject_type: String,
     pub url: String,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(serde::Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct VersionResponse {
     pub label: String,
     pub url: String,
