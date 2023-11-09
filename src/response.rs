@@ -3,7 +3,7 @@ extern crate reqwest;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResponse<T> {
     pub total_size: i32,
@@ -11,18 +11,18 @@ pub struct QueryResponse<T> {
     pub records: Vec<T>,
     pub next_records_url: Option<String>,
 }
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 pub struct CreateResponse {
     pub id: String,
     pub success: bool,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 pub struct UpsertResponse {
     create: Option<CreateResponse>,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {
     pub message: String,
@@ -30,7 +30,7 @@ pub struct ErrorResponse {
     pub fields: Option<Vec<String>>,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 pub struct TokenResponse {
     pub id: String,
     pub issued_at: String,
@@ -40,7 +40,7 @@ pub struct TokenResponse {
     pub token_type: Option<String>,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 pub struct TokenErrorResponse {
     error: String,
     error_description: String,
@@ -53,7 +53,7 @@ pub struct AccessToken {
     pub issued_at: String,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DescribeResponse {
     pub activateable: bool,
@@ -93,7 +93,7 @@ pub struct DescribeResponse {
     pub urls: Urls,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Field {
     pub aggregatable: bool,
@@ -156,7 +156,7 @@ pub struct Field {
     pub write_requires_master_read: bool,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChildRelationship {
     pub cascade_delete: bool,
@@ -170,7 +170,7 @@ pub struct ChildRelationship {
     pub restricted_delete: bool,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Urls {
     pub compact_layouts: String,
@@ -187,7 +187,7 @@ pub struct Urls {
     pub sobject: String,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DescribeGlobalResponse {
     pub encoding: String,
@@ -195,7 +195,7 @@ pub struct DescribeGlobalResponse {
     pub sobjects: Vec<DescribeGlobalSObjectResponse>,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DescribeGlobalSObjectResponse {
     pub activateable: bool,
@@ -224,14 +224,14 @@ pub struct DescribeGlobalSObjectResponse {
     pub urls: HashMap<String, String>,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub search_records: Vec<SearchRecord>,
     //    pub metadata: Metadata,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchRecord {
     #[serde(rename = "Id")]
@@ -239,7 +239,7 @@ pub struct SearchRecord {
     pub attributes: SObjectAttribute,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SObjectAttribute {
     #[serde(rename = "type")]
@@ -247,7 +247,7 @@ pub struct SObjectAttribute {
     pub url: String,
 }
 
-#[derive(serde::Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionResponse {
     pub label: String,
