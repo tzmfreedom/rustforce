@@ -441,7 +441,7 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<(), Error> {
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<(String), Error> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
