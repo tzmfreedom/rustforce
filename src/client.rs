@@ -441,7 +441,7 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<String, Error> {
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv:  Vec<u8>) -> Result<String, Error> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
@@ -569,10 +569,13 @@ impl Client {
     }
 
     async fn put(&self, url: String, buffer: Vec<u8>) -> Result<Response, Error> {
+        let mut headers = self.create_header()?;
+        headers.insert("Content-Type", "text/csv".parse().unwrap());
+        headers.insert("Accept", "application/json".parse().unwrap());
         let res = self
             .http_client
             .put(url.as_str())
-            .headers(self.create_header()?)
+            .headers(headers)
             .body(buffer)
             .send()
             .await?;
