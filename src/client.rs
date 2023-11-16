@@ -446,7 +446,7 @@ impl Client {
         let res = self.put(resource_url, csv).await?;
 
         if res.status().is_success() {
-            Ok(res.text().await?)
+            Ok(res.body().await?)
         } else {
             Err(Error::DescribeError(res.json().await?))
         }
