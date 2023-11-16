@@ -189,6 +189,62 @@ pub struct Urls {
 
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct BulkApiCreateResponse {
+    id: String,
+    operation: String,
+    object: String,
+    created_by_id: String,
+    created_date: String,
+    system_modstamp: String,
+    state: String,
+    concurrency_mode: String,
+    content_type: String,
+    api_version: f64,
+    content_url: String,
+    line_ending: String,
+}
+
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkApiStateChangeResponse {
+    id: String,
+    operation: String,
+    object: String,
+    created_by_id: String,
+    created_date: String,
+    system_modstamp: String,
+    state: String,
+    concurrency_mode: String,
+    content_type: String,
+    api_version: f64
+}
+
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkApiStatusResponse {
+    id: String,
+    operation: String,
+    object: String,
+    created_by_id: String,
+    created_date: String,
+    system_modstamp: String,
+    state: String,
+    concurrency_mode: String,
+    content_type: String,
+    api_version: f64,
+    job_type: String,
+    line_ending: String,
+    column_delimiter: String,
+    number_records_processed: i64,
+    number_records_failed: i64,
+    retries: i64,
+    total_processing_time: i64,
+    api_active_processing_time: i64,
+    apex_processing_time: i64,
+}
+
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DescribeGlobalResponse {
     pub encoding: String,
     pub max_batch_size: u16,

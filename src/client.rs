@@ -1,10 +1,7 @@
 extern crate reqwest;
 
 use crate::errors::Error;
-use crate::response::{
-    AccessToken, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse,
-    QueryResponse, SearchResponse, TokenResponse, VersionResponse,
-};
+use crate::response::{AccessToken, BulkApiCreateResponse, BulkApiStateChangeResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
 use crate::utils::substring_before;
 use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
@@ -428,6 +425,49 @@ impl Client {
 
         if res.status().is_success() {
             Ok(res)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn create_job<T: Serialize>(&self, params: T) -> Result<BulkApiCreateResponse, Error> {
+        let resource_url = format!("{}/jobs/ingest", self.base_path());
+        let res = self.post(resource_url, params).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv: &str) -> Result<(), Error> {
+        let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
+        let res = self.put(resource_url, csv).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+    pub async fn set_upload_state<T: Serialize>(&self, job_id: &str, params: T) -> Result<BulkApiStatusResponse, Error> {
+        let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
+        let res = self.patch(resource_url, params).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn check_job_status(&self, job_id: &str) -> Result<(), Error> {
+        let resource_url = format!("{}/jobs/ingest/{}/", self.base_path(), job_id);
+        let res = self.get(resource_url, vec![]).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
         } else {
             Err(Error::DescribeError(res.json().await?))
         }
