@@ -441,14 +441,14 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<(String), Error> {
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<(String), String> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
         if res.status().is_success() {
-            Ok(res.body().await?)
+            Ok(res.text().await?)
         } else {
-            Err(Error::DescribeError(res.json().await?))
+            Err(res.text().await?)
         }
     }
     pub async fn set_upload_state<T: Serialize>(&self, job_id: &str, params: T) -> Result<BulkApiStatusResponse, Error> {
