@@ -441,7 +441,7 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv: &str) -> Result<(), Error> {
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<(), Error> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
@@ -566,12 +566,12 @@ impl Client {
         Ok(res)
     }
 
-    async fn put<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+    async fn put(&self, url: String, buffer: Vec<u8>) -> Result<Response, Error> {
         let res = self
             .http_client
             .put(url.as_str())
             .headers(self.create_header()?)
-            .json(&params)
+            .body(buffer)
             .send()
             .await?;
         Ok(res)
@@ -874,5 +874,31 @@ mod tests {
         client.set_instance_url(url);
         client.set_access_token("this_is_access_token");
         return client;
+    }
+
+    #[tokio::test]
+    async fn test_idk(){
+
+
+        #[derive(Default, Deserialize, Serialize)]
+        #[serde(rename_all = "camelCase")]
+        pub struct BatchJob {
+            pub object: String,
+            pub content_type: String,
+            pub operation: String,
+            pub line_ending: String
+        }
+
+        let client = create_test_client();
+
+        let params = BatchJob {
+            operation: "Insert".to_string(),
+            object: "Timecard".to_string(),
+            content_type: "CSV".to_string(),
+            line_ending: "LF".to_string()
+        };
+
+
+        client.create_job(params);
     }
 }
