@@ -9,7 +9,6 @@ use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
-use log::debug;
 
 /// Represents a Salesforce Client
 #[derive(Clone, Default)]
@@ -447,10 +446,10 @@ impl Client {
         let res = self.put(resource_url, csv).await?;
 
         if res.status().is_success() {
-            debug!("{:?}", res);
+            println!("{:?}", res);
             Ok(res.text().await?)
         } else {
-            debug!("{:?}", res);
+            println!("{:?}", res);
             Err(Error::DescribeError(res.json().await?))
         }
     }
