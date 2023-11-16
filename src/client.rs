@@ -566,6 +566,17 @@ impl Client {
         Ok(res)
     }
 
+    async fn put<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+        let res = self
+            .http_client
+            .put(url.as_str())
+            .headers(self.create_header()?)
+            .json(&params)
+            .send()
+            .await?;
+        Ok(res)
+    }
+
     async fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
         let res = self
             .http_client
