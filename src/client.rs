@@ -1,7 +1,7 @@
 extern crate reqwest;
 
 use crate::errors::Error;
-use crate::response::{AccessToken, BulkApiCreateResponse, BulkApiStateChangeResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
+use crate::response::{AccessToken, AllJobsStatus, JobDetails, BulkApiCreateResponse, BulkApiStateChangeResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse, JobInfo, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
 use crate::utils::substring_before;
 use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
@@ -451,6 +451,41 @@ impl Client {
             Err(Error::DescribeError(res.json().await?))
         }
     }
+
+    pub async fn get_recent_jobs(&self) -> Result<AllJobsStatus, Error> {
+        let resource_url = format!("{}/jobs/ingest/", self.base_path());
+        let res = self.get(resource_url, vec![]).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn get_job_status(&self, job_id: &str) -> Result<JobDetails, Error> {
+        let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
+        let res = self.get(resource_url, vec![]).await?;
+
+        if res.status().is_success() {
+            Ok(res.json().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn download_csv_for_job(&self, job_id: &str, result_set: &str) -> Result<String, Error> {
+        // NOTE: RESULT_SET IS ONE OF successfulResults, failedResults, unprocessedrecords
+        let resource_url = format!("{}/jobs/ingest/{}/{}", self.base_path(), job_id, result_set);
+        let res = self.get_raw(resource_url).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
     pub async fn set_upload_state<T: Serialize>(&self, job_id: &str, params: T) -> Result<BulkApiStatusResponse, Error> {
         let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
         let res = self.patch(resource_url, params).await?;
@@ -555,6 +590,18 @@ impl Client {
         Ok(res)
     }
 
+    async fn get_raw(&self, url: String) -> Result<Response, Error> {
+        let mut headers = self.create_header()?;
+        headers.remove("Accept");
+        let res = self
+            .http_client
+            .get(url.as_str())
+            .headers(headers)
+            .send()
+            .await?;
+        Ok(res)
+    }
+
     async fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
         let res = self
             .http_client
@@ -611,6 +658,8 @@ impl Client {
             )
             .parse()?,
         );
+
+        headers.insert("Accept", "application/json".parse().unwrap());
 
         Ok(headers)
     }
