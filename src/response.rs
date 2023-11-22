@@ -190,57 +190,57 @@ pub struct Urls {
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkApiCreateResponse {
-    id: String,
-    operation: String,
-    object: String,
-    created_by_id: String,
-    created_date: String,
-    system_modstamp: String,
-    state: String,
-    concurrency_mode: String,
-    content_type: String,
-    api_version: f64,
-    content_url: String,
-    line_ending: String,
+    pub id: String,
+    pub operation: String,
+    pub object: String,
+    pub created_by_id: String,
+    pub created_date: String,
+    pub system_modstamp: String,
+    pub state: String,
+    pub concurrency_mode: String,
+    pub content_type: String,
+    pub api_version: f64,
+    pub content_url: String,
+    pub line_ending: String,
 }
 
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkApiStateChangeResponse {
-    id: String,
-    operation: String,
-    object: String,
-    created_by_id: String,
-    created_date: String,
-    system_modstamp: String,
-    state: String,
-    concurrency_mode: String,
-    content_type: String,
-    api_version: f64
+    pub id: String,
+    pub operation: String,
+    pub object: String,
+    pub created_by_id: String,
+    pub created_date: String,
+    pub system_modstamp: String,
+    pub state: String,
+    pub concurrency_mode: String,
+    pub content_type: String,
+    pub api_version: f64
 }
 
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkApiStatusResponse {
-    id: String,
-    operation: String,
-    object: String,
-    created_by_id: String,
-    created_date: String,
-    system_modstamp: String,
-    state: String,
-    concurrency_mode: String,
-    content_type: String,
-    api_version: f64,
-    job_type: String,
-    line_ending: String,
-    column_delimiter: String,
-    number_records_processed: i64,
-    number_records_failed: i64,
-    retries: i64,
-    total_processing_time: i64,
-    api_active_processing_time: i64,
-    apex_processing_time: i64,
+    pub id: String,
+    pub operation: String,
+    pub object: String,
+    pub created_by_id: String,
+    pub created_date: String,
+    pub system_modstamp: String,
+    pub state: String,
+    pub concurrency_mode: String,
+    pub content_type: String,
+    pub api_version: f64,
+    pub job_type: Option<String>,
+    pub line_ending: Option<String>,
+    pub column_delimiter: Option<String>,
+    pub number_records_processed: Option<i64>,
+    pub number_records_failed: Option<i64>,
+    pub retries: Option<i64>,
+    pub total_processing_time: Option<i64>,
+    pub api_active_processing_time: Option<i64>,
+    pub apex_processing_time: Option<i64>,
 }
 
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
@@ -345,13 +345,13 @@ pub struct JobDetails {
     pub column_delimiter: Option<String>,
     pub concurrency_mode: String,
     pub content_type: String,
-    pub content_url: String,
+    pub content_url: Option<String>,
     pub created_by_id: String,
     pub created_date: String, // Use chrono::NaiveDateTime if you want to handle dates and times
     pub error_message: Option<String>, // Use Option if the field can be null
     pub external_id_field_name: Option<String>, // Use Option if the field can be absent
     pub id: String,
-    pub job_type: String,
+    pub job_type: Option<String>,
     pub line_ending: String,
     pub number_records_failed: Option<u64>,
     pub number_records_processed: Option<u64>,
