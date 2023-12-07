@@ -1,7 +1,7 @@
 extern crate reqwest;
 
 use crate::errors::Error;
-use crate::response::{AccessToken, AllJobsStatus, JobDetails, BulkApiCreateResponse, BulkApiStateChangeResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, DescribeResponse, ErrorResponse, JobInfo, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
+use crate::response::{AccessToken, AllJobsStatus, JobDetails, BulkApiCreateResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, ErrorResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
 use crate::utils::substring_before;
 use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
@@ -9,6 +9,8 @@ use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::convert::TryInto;
+use log::{debug, info};
 
 /// Represents a Salesforce Client
 #[derive(Clone, Default)]
@@ -66,12 +68,12 @@ impl Client {
         });
         self
     }
-    
+
     pub fn get_access_token(&mut self) -> String {
         match &self.access_token {
             Some(token) => {
                 return format!("{}", token.value);
-            },
+            }
             None => {
                 return "".to_string();
             }
@@ -162,7 +164,7 @@ impl Client {
             "</se:Body>",
             "</se:Envelope>",
         ]
-        .join("");
+            .join("");
         let res = self
             .http_client
             .post(token_url.as_str())
@@ -258,7 +260,7 @@ impl Client {
     ) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/{}", self.instance_url.as_ref().unwrap(), next_records_url);
         let res = self.get(query_url, vec![]).await?;
-          if res.status().is_success() {
+        if res.status().is_success() {
             Ok(res.json().await?)
         } else {
             Err(Error::ErrorResponses(res.json().await?))
@@ -441,7 +443,7 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv:  Vec<u8>) -> Result<String, Error> {
+    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<String, Error> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
@@ -508,11 +510,16 @@ impl Client {
         }
     }
 
-    pub async fn rest_get(
-        &self,
-        path: String,
-        params: Vec<(&str, &str)>,
-    ) -> Result<Response, Error> {
+    pub async fn get_identity(&self, identity_url: String) -> Result<String, Error> {
+        let res = self.get(identity_url, vec![]).await?;
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn rest_get(&self, path: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -656,7 +663,7 @@ impl Client {
                 "Bearer {}",
                 self.access_token.as_ref().ok_or(Error::NotLoggedIn)?.value
             )
-            .parse()?,
+                .parse()?,
         );
 
         headers.insert("Accept", "application/json".parse().unwrap());
@@ -701,7 +708,7 @@ mod tests {
                     "signature": "abcde",
                     "token_type": "Bearer",
                 })
-                .to_string(),
+                    .to_string(),
             )
             .create();
 
@@ -732,10 +739,10 @@ mod tests {
             "GET",
             "/services/data/v44.0/query/?q=SELECT+Id%2C+Name+FROM+Account",
         )
-        .with_status(200)
-        .with_header("content-type", "application/json")
-        .with_body(
-            json!({
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
                 "totalSize": 123,
                 "done": true,
                 "records": vec![
@@ -745,9 +752,9 @@ mod tests {
                     },
                 ]
             })
-            .to_string(),
-        )
-        .create();
+                    .to_string(),
+            )
+            .create();
 
         let client = create_test_client();
         let r: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account").await?;
@@ -770,7 +777,7 @@ mod tests {
                                 "success": true,
                 //                "errors": vec![],
                             })
-                .to_string(),
+                    .to_string(),
             )
             .create();
 
@@ -806,17 +813,17 @@ mod tests {
             "PATCH",
             "/services/data/v44.0/sobjects/Account/ExKey__c/123",
         )
-        .with_status(201)
-        .with_header("content-type", "application/json")
-        .with_body(
-            json!({
+            .with_status(201)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
                             "id": "12345",
                             "success": true,
             //                "errors": vec![],
                         })
-            .to_string(),
-        )
-        .create();
+                    .to_string(),
+            )
+            .create();
 
         let client = create_test_client();
         let r = client
@@ -842,9 +849,9 @@ mod tests {
             "PATCH",
             "/services/data/v44.0/sobjects/Account/ExKey__c/123",
         )
-        .with_status(204)
-        .with_header("content-type", "application/json")
-        .create();
+            .with_status(204)
+            .with_header("content-type", "application/json")
+            .create();
 
         let client = create_test_client();
         let r = client
@@ -886,7 +893,7 @@ mod tests {
                     "url": "https://ap.salesforce.com/services/data/v44.0/",
                     "version": "v44.0",
                 }])
-                .to_string(),
+                    .to_string(),
             )
             .create();
 
@@ -909,7 +916,7 @@ mod tests {
                     "Id": "123",
                     "Name": "foo",
                 })
-                .to_string(),
+                    .to_string(),
             )
             .create();
 
@@ -929,16 +936,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_idk(){
-
-
+    async fn test_idk() {
         #[derive(Default, Deserialize, Serialize)]
         #[serde(rename_all = "camelCase")]
         pub struct BatchJob {
             pub object: String,
             pub content_type: String,
             pub operation: String,
-            pub line_ending: String
+            pub line_ending: String,
         }
 
         let client = create_test_client();
@@ -947,7 +952,7 @@ mod tests {
             operation: "Insert".to_string(),
             object: "Timecard".to_string(),
             content_type: "CSV".to_string(),
-            line_ending: "LF".to_string()
+            line_ending: "LF".to_string(),
         };
 
 
