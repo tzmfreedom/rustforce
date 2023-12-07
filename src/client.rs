@@ -10,7 +10,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use log::{debug, info};
 
 /// Represents a Salesforce Client
 #[derive(Clone, Default)]
