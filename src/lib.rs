@@ -54,7 +54,6 @@ pub mod client;
 pub mod errors;
 pub mod response;
 pub mod utils;
-pub mod requests;
 
 
 pub type Client = client::Client;
