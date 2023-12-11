@@ -10,6 +10,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Represents a Salesforce Client
 #[derive(Clone, Default)]
@@ -20,7 +21,9 @@ pub struct Client {
     login_endpoint: String,
     instance_url: Option<String>,
     pub access_token: Option<AccessToken>,
+    refresh_token: Option<String>,
     version: String,
+    secret_required: Option<bool>,
 }
 
 impl Client {
@@ -35,6 +38,8 @@ impl Client {
             login_endpoint: "https://login.salesforce.com".to_string(),
             access_token: None,
             instance_url: None,
+            refresh_token: None,
+            secret_required: Some(true),
             version: "v44.0".to_string(),
         }
     }
@@ -57,6 +62,22 @@ impl Client {
         self
     }
 
+    pub fn set_refresh_token(&mut self, refresh_token: &str) -> &mut Self {
+        self.refresh_token = Some(refresh_token.to_string());
+        self
+    }
+
+    pub fn set_secret_required(&mut self, secret_required: bool) -> &mut Self {
+        self.secret_required = Some(secret_required);
+        self
+    }
+
+    pub fn set_client_id(&mut self, client_id: &str) -> &mut Self {
+        self.client_id = Some(client_id.to_string());
+        self
+    }
+
+
     /// Set Access token if you've already obtained one via one of the OAuth2
     /// flows
     pub fn set_access_token(&mut self, access_token: &str) -> &mut Self {
@@ -69,25 +90,57 @@ impl Client {
     }
 
     pub fn get_access_token(&mut self) -> String {
-        match &self.access_token {
+        return match &self.access_token {
             Some(token) => {
-                return format!("{}", token.value);
+                format!("{}", token.value)
             }
             None => {
-                return "".to_string();
+                "".to_string()
             }
-        }
+        };
     }
 
+    pub async fn ensure_refresh(&mut self) -> Result<&mut Self, Error> {
+        if self.access_token.is_none() {
+            return Ok(self);
+        }
+
+        let timestamp_ms = self.access_token.clone().unwrap().issued_at.parse::<u64>().unwrap();
+        let seconds = timestamp_ms / 1000;
+        let nanos = (timestamp_ms % 1000) * 1_000_000; // Convert remainder to nanoseconds
+
+        let given_time = UNIX_EPOCH + Duration::new(seconds, nanos as u32);
+
+        let two_hours = Duration::from_secs(2 * 60 * 60); // 2 hours in seconds
+        let modified_time = given_time + two_hours;
+
+        let current_time = SystemTime::now();
+
+        if current_time > modified_time {
+            println!("Access Token Expired Refreshing.");
+            Ok(self.refresh().await?)
+        }
+        else{
+            Ok(self)
+        }
+
+
+    }
+
+
     /// This will fetch an access token when provided with a refresh token
-    pub async fn refresh(&mut self, refresh_token: &str) -> Result<&mut Self, Error> {
+    pub async fn refresh(&mut self) -> Result<&mut Self, Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
-        let params = [
+        let mut params = vec![
             ("grant_type", "refresh_token"),
-            ("refresh_token", refresh_token),
+            ("refresh_token", self.refresh_token.as_ref().unwrap()),
             ("client_id", self.client_id.as_ref().unwrap()),
-            ("client_secret", self.client_secret.as_ref().unwrap()),
         ];
+
+        if self.secret_required.unwrap() {
+            params.push(("client_secret", self.client_secret.as_ref().unwrap()));
+        }
+
         let res = self
             .http_client
             .post(token_url.as_str())
@@ -111,11 +164,7 @@ impl Client {
     }
 
     /// Login to Salesforce with username and password
-    pub async fn login_with_credential(
-        &mut self,
-        username: String,
-        password: String,
-    ) -> Result<&mut Self, Error> {
+    pub async fn login_with_credential(&mut self, username: String, password: String) -> Result<&mut Self, Error> {
         let token_url = format!("{}/services/oauth2/token", self.login_endpoint);
         let params = [
             ("grant_type", "password"),
@@ -225,7 +274,7 @@ impl Client {
     }
 
     /// Query record using SOQL
-    pub async fn query<T: DeserializeOwned>(&self, query: &str) -> Result<QueryResponse<T>, Error> {
+    pub async fn query<T: DeserializeOwned>(&mut self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
         let params = vec![("q", query)];
         let res = self.get(query_url, params).await?;
@@ -238,10 +287,7 @@ impl Client {
     }
 
     /// Query All records using SOQL
-    pub async fn query_all<T: DeserializeOwned>(
-        &self,
-        query: &str,
-    ) -> Result<QueryResponse<T>, Error> {
+    pub async fn query_all<T: DeserializeOwned>(&mut self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/queryAll/", self.base_path());
         let params = vec![("q", query)];
         let res = self.get(query_url, params).await?;
@@ -252,11 +298,7 @@ impl Client {
         }
     }
 
-    /// Query More records using SOQL
-    pub async fn query_more<T: DeserializeOwned>(
-        &self,
-        next_records_url: &str,
-    ) -> Result<QueryResponse<T>, Error> {
+    pub async fn query_more<T: DeserializeOwned>(&mut self, next_records_url: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/{}", self.instance_url.as_ref().unwrap(), next_records_url);
         let res = self.get(query_url, vec![]).await?;
         if res.status().is_success() {
@@ -266,8 +308,7 @@ impl Client {
         }
     }
 
-    /// Find records using SOSL
-    pub async fn search(&self, query: &str) -> Result<SearchResponse, Error> {
+    pub async fn search_SOSL(&mut self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
         let params = vec![("q", query)];
         let res = self.get(query_url, params).await?;
@@ -279,7 +320,7 @@ impl Client {
     }
 
     /// Get all supported API versions
-    pub async fn versions(&self) -> Result<Vec<VersionResponse>, Error> {
+    pub async fn versions(&mut self) -> Result<Vec<VersionResponse>, Error> {
         let versions_url = format!(
             "{}/services/data/",
             self.instance_url.as_ref().ok_or(Error::NotLoggedIn)?
@@ -293,11 +334,7 @@ impl Client {
     }
 
     /// Finds a record by ID
-    pub async fn find_by_id<T: DeserializeOwned>(
-        &self,
-        sobject_name: &str,
-        id: &str,
-    ) -> Result<T, Error> {
+    pub async fn find_by_id<T: DeserializeOwned>(&mut self, sobject_name: &str, id: &str) -> Result<T, Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let res = self.get(resource_url, vec![]).await?;
 
@@ -309,11 +346,7 @@ impl Client {
     }
 
     /// Creates an SObject
-    pub async fn create<T: Serialize>(
-        &self,
-        sobject_name: &str,
-        params: T,
-    ) -> Result<CreateResponse, Error> {
+    pub async fn create<T: Serialize>(&mut self, sobject_name: &str, params: T) -> Result<CreateResponse, Error> {
         let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
         let res = self.post(resource_url, params).await?;
 
@@ -324,13 +357,7 @@ impl Client {
         }
     }
 
-    /// Updates an SObject
-    pub async fn update<T: Serialize>(
-        &self,
-        sobject_name: &str,
-        id: &str,
-        params: T,
-    ) -> Result<(), Error> {
+    pub async fn update<T: Serialize>(&mut self, sobject_name: &str, id: &str, params: T) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let res = self.patch(resource_url, params).await?;
 
@@ -341,14 +368,7 @@ impl Client {
         }
     }
 
-    /// Upserts an SObject with key
-    pub async fn upsert<T: Serialize>(
-        &self,
-        sobject_name: &str,
-        key_name: &str,
-        key: &str,
-        params: T,
-    ) -> Result<Option<CreateResponse>, Error> {
+    pub async fn upsert<T: Serialize>(&mut self, sobject_name: &str, key_name: &str, key: &str, params: T) -> Result<Option<CreateResponse>, Error> {
         let resource_url = format!(
             "{}/sobjects/{}/{}/{}",
             self.base_path(),
@@ -368,8 +388,7 @@ impl Client {
         }
     }
 
-    /// Deletes an SObject
-    pub async fn destroy(&self, sobject_name: &str, id: &str) -> Result<(), Error> {
+    pub async fn destroy(&mut self, sobject_name: &str, id: &str) -> Result<(), Error> {
         let resource_url = format!("{}/sobjects/{}/{}", self.base_path(), sobject_name, id);
         let res = self.delete(resource_url).await?;
 
@@ -380,8 +399,7 @@ impl Client {
         }
     }
 
-    /// Describes all objects
-    pub async fn describe_global(&self) -> Result<DescribeGlobalResponse, Error> {
+    pub async fn describe_global(&mut self) -> Result<DescribeGlobalResponse, Error> {
         let resource_url = format!("{}/sobjects/", self.base_path());
         let res = self.get(resource_url, vec![]).await?;
 
@@ -392,8 +410,7 @@ impl Client {
         }
     }
 
-    /// Describes specific object
-    pub async fn describe(&self, sobject_name: &str) -> Result<serde_json::Value, Error> {
+    pub async fn describe(&mut self, sobject_name: &str) -> Result<serde_json::Value, Error> {
         let resource_url = format!("{}/sobjects/{}/describe", self.base_path(), sobject_name);
         let res = self.get(resource_url, vec![]).await?;
 
@@ -404,12 +421,8 @@ impl Client {
         }
     }
 
-    pub async fn rest_get_fulluri(&self, uri: &str) -> Result<Response, Error> {
-        let resource_url = format!(
-            "{}/services/apexrest/{}",
-            self.instance_url.as_ref().unwrap(),
-            uri
-        );
+    pub async fn rest_get_fulluri(&mut self, uri: &str) -> Result<Response, Error> {
+        let resource_url = format!("{}/services/apexrest/{}", self.instance_url.as_ref().unwrap(), uri);
         let parsed = Url::parse(&resource_url).unwrap();
         // Some ownership absurdity for string refs accessed through iterators with collect
         let hash_query: HashMap<_, _> = parsed.query_pairs().into_owned().collect();
@@ -431,7 +444,7 @@ impl Client {
         }
     }
 
-    pub async fn create_job<T: Serialize>(&self, params: T) -> Result<BulkApiCreateResponse, Error> {
+    pub async fn create_job<T: Serialize>(&mut self, params: T) -> Result<BulkApiCreateResponse, Error> {
         let resource_url = format!("{}/jobs/ingest", self.base_path());
         let res = self.post(resource_url, params).await?;
 
@@ -442,7 +455,7 @@ impl Client {
         }
     }
 
-    pub async fn upload_csv_to_job(&self, job_id: &str, csv: Vec<u8>) -> Result<String, Error> {
+    pub async fn upload_csv_to_job(&mut self, job_id: &str, csv: Vec<u8>) -> Result<String, Error> {
         let resource_url = format!("{}/jobs/ingest/{}/batches", self.base_path(), job_id);
         let res = self.put(resource_url, csv).await?;
 
@@ -453,7 +466,7 @@ impl Client {
         }
     }
 
-    pub async fn get_recent_jobs(&self) -> Result<AllJobsStatus, Error> {
+    pub async fn get_recent_jobs(&mut self) -> Result<AllJobsStatus, Error> {
         let resource_url = format!("{}/jobs/ingest/", self.base_path());
         let res = self.get(resource_url, vec![]).await?;
 
@@ -464,7 +477,7 @@ impl Client {
         }
     }
 
-    pub async fn get_job_status(&self, job_id: &str) -> Result<JobDetails, Error> {
+    pub async fn get_job_status(&mut self, job_id: &str) -> Result<JobDetails, Error> {
         let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
         let res = self.get(resource_url, vec![]).await?;
 
@@ -475,7 +488,7 @@ impl Client {
         }
     }
 
-    pub async fn download_csv_for_job(&self, job_id: &str, result_set: &str) -> Result<String, Error> {
+    pub async fn download_csv_for_job(&mut self, job_id: &str, result_set: &str) -> Result<String, Error> {
         // NOTE: RESULT_SET IS ONE OF successfulResults, failedResults, unprocessedrecords
         let resource_url = format!("{}/jobs/ingest/{}/{}", self.base_path(), job_id, result_set);
         let res = self.get_raw(resource_url).await?;
@@ -487,7 +500,7 @@ impl Client {
         }
     }
 
-    pub async fn set_upload_state<T: Serialize>(&self, job_id: &str, params: T) -> Result<BulkApiStatusResponse, Error> {
+    pub async fn set_upload_state<T: Serialize>(&mut self, job_id: &str, params: T) -> Result<BulkApiStatusResponse, Error> {
         let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
         let res = self.patch(resource_url, params).await?;
 
@@ -498,7 +511,7 @@ impl Client {
         }
     }
 
-    pub async fn check_job_status(&self, job_id: &str) -> Result<(), Error> {
+    pub async fn check_job_status(&mut self, job_id: &str) -> Result<(), Error> {
         let resource_url = format!("{}/jobs/ingest/{}/", self.base_path(), job_id);
         let res = self.get(resource_url, vec![]).await?;
 
@@ -509,7 +522,7 @@ impl Client {
         }
     }
 
-    pub async fn get_identity(&self, identity_url: String) -> Result<String, Error> {
+    pub async fn get_identity(&mut self, identity_url: String) -> Result<String, Error> {
         let res = self.get(identity_url, vec![]).await?;
         if res.status().is_success() {
             Ok(res.text().await?)
@@ -518,7 +531,10 @@ impl Client {
         }
     }
 
-    pub async fn rest_get(&self, path: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+    pub async fn rest_get(&mut self, path: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+        self.refresh().await?;
+
+
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -530,11 +546,10 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_post<T: Serialize>(
-        &self,
-        path: String,
-        params: T,
-    ) -> Result<Response, Error> {
+    pub async fn rest_post<T: Serialize>(&mut self, path: String, params: T) -> Result<Response, Error> {
+        self.refresh().await?;
+
+
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -546,11 +561,10 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_patch<T: Serialize>(
-        &self,
-        path: String,
-        params: T,
-    ) -> Result<Response, Error> {
+    pub async fn rest_patch<T: Serialize>(&mut self, path: String, params: T) -> Result<Response, Error> {
+        self.refresh().await?;
+
+
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -562,7 +576,10 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_put<T: Serialize>(&self, path: String, params: T) -> Result<Response, Error> {
+    pub async fn rest_put<T: Serialize>(&mut self, path: String, params: T) -> Result<Response, Error> {
+        self.refresh().await?;
+
+
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -574,7 +591,10 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn rest_delete(&self, path: String) -> Result<Response, Error> {
+    pub async fn rest_delete(&mut self, path: String) -> Result<Response, Error> {
+        self.refresh().await?;
+
+
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
@@ -585,7 +605,9 @@ impl Client {
         Ok(res)
     }
 
-    async fn get(&self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+    async fn get(&mut self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+        self.refresh().await?;
+
         let res = self
             .http_client
             .get(url.as_str())
@@ -608,7 +630,9 @@ impl Client {
         Ok(res)
     }
 
-    async fn post<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+    async fn post<T: Serialize>(&mut self, url: String, params: T) -> Result<Response, Error> {
+        self.refresh().await?;
+
         let res = self
             .http_client
             .post(url.as_str())
@@ -619,7 +643,9 @@ impl Client {
         Ok(res)
     }
 
-    async fn put(&self, url: String, buffer: Vec<u8>) -> Result<Response, Error> {
+    async fn put(&mut self, url: String, buffer: Vec<u8>) -> Result<Response, Error> {
+        self.refresh().await?;
+
         let mut headers = self.create_header()?;
         headers.insert("Content-Type", "text/csv".parse().unwrap());
         headers.insert("Accept", "application/json".parse().unwrap());
@@ -633,7 +659,9 @@ impl Client {
         Ok(res)
     }
 
-    async fn patch<T: Serialize>(&self, url: String, params: T) -> Result<Response, Error> {
+    async fn patch<T: Serialize>(&mut self, url: String, params: T) -> Result<Response, Error> {
+        self.refresh().await?;
+
         let res = self
             .http_client
             .patch(url.as_str())
@@ -644,7 +672,9 @@ impl Client {
         Ok(res)
     }
 
-    async fn delete(&self, url: String) -> Result<Response, Error> {
+    async fn delete(&mut self, url: String) -> Result<Response, Error> {
+        self.refresh().await?;
+
         let res = self
             .http_client
             .delete(url.as_str())
@@ -671,11 +701,7 @@ impl Client {
     }
 
     fn base_path(&self) -> String {
-        format!(
-            "{}/services/data/{}",
-            self.instance_url.as_ref().unwrap(),
-            self.version
-        )
+        format!("{}/services/data/{}", self.instance_url.as_ref().unwrap(), self.version)
     }
 }
 
@@ -755,7 +781,7 @@ mod tests {
             )
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r: QueryResponse<Account> = client.query("SELECT Id, Name FROM Account").await?;
         assert_eq!(123, r.total_size);
         assert_eq!(true, r.done);
@@ -780,7 +806,7 @@ mod tests {
             )
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client
             .create("Account", [("Name", "foo"), ("Abc__c", "123")])
             .await?;
@@ -797,7 +823,7 @@ mod tests {
             .with_header("content-type", "application/json")
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client
             .update("Account", "123", [("Name", "foo"), ("Abc__c", "123")])
             .await;
@@ -824,7 +850,7 @@ mod tests {
             )
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client
             .upsert(
                 "Account",
@@ -852,7 +878,7 @@ mod tests {
             .with_header("content-type", "application/json")
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client
             .upsert(
                 "Account",
@@ -874,7 +900,7 @@ mod tests {
             .with_header("content-type", "application/json")
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client.destroy("Account", "123").await?;
         println!("{:?}", r);
 
@@ -896,7 +922,7 @@ mod tests {
             )
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r = client.versions().await?;
         assert_eq!("Winter '19", r[0].label);
         assert_eq!("https://ap.salesforce.com/services/data/v44.0/", r[0].url);
@@ -919,7 +945,7 @@ mod tests {
             )
             .create();
 
-        let client = create_test_client();
+        let mut client = create_test_client();
         let r: Account = client.find_by_id("Account", "123").await?;
         assert_eq!("foo", r.name);
 
@@ -945,7 +971,7 @@ mod tests {
             pub line_ending: String,
         }
 
-        let client = create_test_client();
+        let mut client = create_test_client();
 
         let params = BatchJob {
             operation: "Insert".to_string(),
