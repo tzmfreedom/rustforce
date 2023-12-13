@@ -502,8 +502,10 @@ impl Client {
         let headers = vec![
             //X-SFDC-Session is needed for API v1 we can just pass it our access token
             ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
+            ("Accept".to_string(), "application/xml".to_string())
         ];
         let res = self.get_raw(&resource_url, headers).await?;
+
 
         if res.status().is_success() {
             Ok(res.text().await?)
@@ -516,7 +518,25 @@ impl Client {
         let resource_url = format!("{}/job/{}/batch/{}/result", self.base_path_classic(), job_id, batch_id);
         let headers = vec![
             //X-SFDC-Session is needed for API v1 we can just pass it our access token
-            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone())
+            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
+            ("Accept".to_string(), "application/xml".to_string())
+        ];
+        let res = self.get_raw(&resource_url, headers).await?;
+
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn get_batch_result_classic(&mut self, job_id: &str, batch_id: &str, result_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/job/{}/batch/{}/result/{}", self.base_path_classic(), job_id, batch_id, result_id);
+        let headers = vec![
+            //X-SFDC-Session is needed for API v1 we can just pass it our access token
+            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
+            ("Accept".to_string(), "application/xml".to_string())
         ];
         let res = self.get_raw(&resource_url, headers).await?;
 
@@ -526,6 +546,7 @@ impl Client {
             Err(Error::DescribeError(res.json().await?))
         }
     }
+
 
     pub async fn get_result_for_batch(&mut self, job_id: &str, batch_id: &str) -> Result<String, Error> {
         let resource_url = format!("{}/job/{}/batch/{}", self.base_path(), job_id, batch_id);
@@ -745,6 +766,9 @@ impl Client {
                 Ok(value) => value,
                 Err(_) => return Err(Error::DeserializeError("Invalid Header Value".to_string())), // Replace with appropriate error handling
             };
+
+            //delete duplicates
+            headers.remove(key);
 
             headers.insert(header_name, header_value);
         }
