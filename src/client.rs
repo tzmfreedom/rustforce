@@ -497,12 +497,12 @@ impl Client {
         }
     }
 
-    pub async fn get_batch_for_classic_job(&mut self, job_id: &str) -> Result<String, Error> {
+    pub async fn get_batch_for_classic_job(&mut self, job_id: &str, content_type: &str) -> Result<String, Error> {
         let resource_url = format!("{}/job/{}/batch", self.base_path_classic(), job_id);
         let headers = vec![
             //X-SFDC-Session is needed for API v1 we can just pass it our access token
             ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
-            ("Accept".to_string(), "application/xml".to_string())
+            ("Accept".to_string(), content_type.to_string())
         ];
         let res = self.get_raw(&resource_url, headers).await?;
 
@@ -514,12 +514,12 @@ impl Client {
         }
     }
 
-    pub async fn get_batch_result_list_classic(&mut self, job_id: &str, batch_id: &str) -> Result<String, Error> {
+    pub async fn get_batch_result_list_classic(&mut self, job_id: &str, batch_id: &str, content_type: &str) -> Result<String, Error> {
         let resource_url = format!("{}/job/{}/batch/{}/result", self.base_path_classic(), job_id, batch_id);
         let headers = vec![
             //X-SFDC-Session is needed for API v1 we can just pass it our access token
             ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
-            ("Accept".to_string(), "application/xml".to_string())
+            ("Accept".to_string(), content_type.to_string())
         ];
         let res = self.get_raw(&resource_url, headers).await?;
 
