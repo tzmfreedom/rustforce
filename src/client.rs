@@ -4,7 +4,7 @@ use crate::errors::Error;
 use crate::response::{AccessToken, AllJobsStatus, JobDetails, BulkApiCreateResponse, BulkApiStatusResponse, CreateResponse, DescribeGlobalResponse, ErrorResponse, QueryResponse, SearchResponse, TokenResponse, VersionResponse};
 use crate::utils::substring_before;
 use regex::Regex;
-use reqwest::header::{HeaderMap, AUTHORIZATION};
+use reqwest::header::{HeaderMap, AUTHORIZATION, HeaderName, HeaderValue};
 use reqwest::{Response, StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -119,12 +119,9 @@ impl Client {
         if current_time > modified_time {
             println!("Access Token Expired Refreshing.");
             Ok(self.refresh().await?)
-        }
-        else{
+        } else {
             Ok(self)
         }
-
-
     }
 
 
@@ -276,7 +273,7 @@ impl Client {
     /// Query record using SOQL
     pub async fn query<T: DeserializeOwned>(&mut self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/query/", self.base_path());
-        let params = vec![("q", query)];
+        let params = vec![("q".to_string(), query.to_string())];
         let res = self.get(query_url, params).await?;
 
         if res.status().is_success() {
@@ -289,7 +286,7 @@ impl Client {
     /// Query All records using SOQL
     pub async fn query_all<T: DeserializeOwned>(&mut self, query: &str) -> Result<QueryResponse<T>, Error> {
         let query_url = format!("{}/queryAll/", self.base_path());
-        let params = vec![("q", query)];
+        let params = vec![("q".to_string(), query.to_string())];
         let res = self.get(query_url, params).await?;
         if res.status().is_success() {
             Ok(res.json().await?)
@@ -310,7 +307,7 @@ impl Client {
 
     pub async fn search_SOSL(&mut self, query: &str) -> Result<SearchResponse, Error> {
         let query_url = format!("{}/search/", self.base_path());
-        let params = vec![("q", query)];
+        let params = vec![("q".to_string(), query.to_string())];
         let res = self.get(query_url, params).await?;
         if res.status().is_success() {
             Ok(res.json().await?)
@@ -491,7 +488,50 @@ impl Client {
     pub async fn download_csv_for_job(&mut self, job_id: &str, result_set: &str) -> Result<String, Error> {
         // NOTE: RESULT_SET IS ONE OF successfulResults, failedResults, unprocessedrecords
         let resource_url = format!("{}/jobs/ingest/{}/{}", self.base_path(), job_id, result_set);
-        let res = self.get_raw(resource_url).await?;
+        let res = self.get_raw(&resource_url, vec![]).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn get_batch_for_classic_job(&mut self, job_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/job/{}/batch", self.base_path_classic(), job_id);
+        let headers = vec![
+            //X-SFDC-Session is needed for API v1 we can just pass it our access token
+            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
+        ];
+        let res = self.get_raw(&resource_url, headers).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn get_batch_result_list_classic(&mut self, job_id: &str, batch_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/job/{}/batch/{}/result", self.base_path_classic(), job_id, batch_id);
+        let headers = vec![
+            //X-SFDC-Session is needed for API v1 we can just pass it our access token
+            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone())
+        ];
+        let res = self.get_raw(&resource_url, headers).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn get_result_for_batch(&mut self, job_id: &str, batch_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/job/{}/batch/{}", self.base_path(), job_id, batch_id);
+
+        let headers = vec![("Content-Type".to_string(), "text/csv".to_string())];
+        let res = self.get_raw(&resource_url, headers).await?;
 
         if res.status().is_success() {
             Ok(res.text().await?)
@@ -534,12 +574,11 @@ impl Client {
     pub async fn rest_get(&mut self, path: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
         self.refresh().await?;
 
-
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
             .get(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .query(&params)
             .send()
             .await?;
@@ -553,8 +592,8 @@ impl Client {
         let url = format!("{}{}", self.instance_url.as_ref().unwrap(), path);
         let res = self
             .http_client
-            .post(url.as_str())
-            .headers(self.create_header()?)
+            .post(url)
+            .headers(self.create_header(vec![])?)
             .json(&params)
             .send()
             .await?;
@@ -569,7 +608,7 @@ impl Client {
         let res = self
             .http_client
             .patch(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .json(&params)
             .send()
             .await?;
@@ -584,7 +623,7 @@ impl Client {
         let res = self
             .http_client
             .put(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .json(&params)
             .send()
             .await?;
@@ -599,31 +638,32 @@ impl Client {
         let res = self
             .http_client
             .delete(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .send()
             .await?;
         Ok(res)
     }
 
-    async fn get(&mut self, url: String, params: Vec<(&str, &str)>) -> Result<Response, Error> {
+    async fn get(&mut self, url: String, params: Vec<(String, String)>) -> Result<Response, Error> {
         self.refresh().await?;
 
         let res = self
             .http_client
             .get(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .query(&params)
             .send()
             .await?;
         Ok(res)
     }
 
-    async fn get_raw(&self, url: String) -> Result<Response, Error> {
-        let mut headers = self.create_header()?;
+
+    async fn get_raw(&self, url: &str, additional_headers: Vec<(String, String)>) -> Result<Response, Error> {
+        let mut headers = self.create_header(additional_headers)?;
         headers.remove("Accept");
         let res = self
             .http_client
-            .get(url.as_str())
+            .get(url)
             .headers(headers)
             .send()
             .await?;
@@ -635,8 +675,8 @@ impl Client {
 
         let res = self
             .http_client
-            .post(url.as_str())
-            .headers(self.create_header()?)
+            .post(url)
+            .headers(self.create_header(vec![])?)
             .json(&params)
             .send()
             .await?;
@@ -646,7 +686,7 @@ impl Client {
     async fn put(&mut self, url: String, buffer: Vec<u8>) -> Result<Response, Error> {
         self.refresh().await?;
 
-        let mut headers = self.create_header()?;
+        let mut headers = self.create_header(vec![])?;
         headers.insert("Content-Type", "text/csv".parse().unwrap());
         headers.insert("Accept", "application/json".parse().unwrap());
         let res = self
@@ -665,7 +705,7 @@ impl Client {
         let res = self
             .http_client
             .patch(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .json(&params)
             .send()
             .await?;
@@ -678,26 +718,43 @@ impl Client {
         let res = self
             .http_client
             .delete(url.as_str())
-            .headers(self.create_header()?)
+            .headers(self.create_header(vec![])?)
             .send()
             .await?;
         Ok(res)
     }
 
-    fn create_header(&self) -> Result<HeaderMap, Error> {
+    fn create_header(&self, additional_headers: Vec<(String, String)>) -> Result<HeaderMap, Error> {
         let mut headers = HeaderMap::new();
+        let auth_value = format!("Bearer {}", self.access_token.as_ref().ok_or(Error::NotLoggedIn)?.value);
         headers.insert(
             AUTHORIZATION,
-            format!(
-                "Bearer {}",
-                self.access_token.as_ref().ok_or(Error::NotLoggedIn)?.value
-            )
-                .parse()?,
+            HeaderValue::from_str(&auth_value)?,
         );
 
-        headers.insert("Accept", "application/json".parse().unwrap());
+        //Default header
+        headers.insert("Accept", HeaderValue::from_str("application/json")?);
+
+        for (key, value) in additional_headers {
+            let header_name = match key.parse::<HeaderName>() {
+                Ok(name) => name,
+                Err(_) => return Err(Error::DeserializeError("Invalid Header Name".to_string())), // Replace with appropriate error handling
+            };
+
+            let header_value = match HeaderValue::from_str(&value) {
+                Ok(value) => value,
+                Err(_) => return Err(Error::DeserializeError("Invalid Header Value".to_string())), // Replace with appropriate error handling
+            };
+
+            headers.insert(header_name, header_value);
+        }
 
         Ok(headers)
+    }
+
+    fn base_path_classic(&self) -> String {
+        //shift this garbage v1 by 1 because it doesn't want v48.0 it wants 48.0
+        format!("{}/services/async/{}", self.instance_url.as_ref().unwrap(), &self.version[1..])
     }
 
     fn base_path(&self) -> String {
