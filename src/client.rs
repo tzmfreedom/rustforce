@@ -345,7 +345,7 @@ impl Client {
     /// Creates an SObject
     pub async fn create<T: Serialize>(&mut self, sobject_name: &str, params: T) -> Result<CreateResponse, Error> {
         let resource_url = format!("{}/sobjects/{}", self.base_path(), sobject_name);
-        let res = self.post(resource_url, params).await?;
+        let res = self.post(resource_url, params, vec![]).await?;
 
         if res.status().is_success() {
             Ok(res.json().await?)
@@ -443,7 +443,7 @@ impl Client {
 
     pub async fn create_job<T: Serialize>(&mut self, params: T) -> Result<BulkApiCreateResponse, Error> {
         let resource_url = format!("{}/jobs/ingest", self.base_path());
-        let res = self.post(resource_url, params).await?;
+        let res = self.post(resource_url, params, vec![]).await?;
 
         if res.status().is_success() {
             Ok(res.json().await?)
@@ -547,6 +547,37 @@ impl Client {
         }
     }
 
+    pub async fn abort_classic_job(&mut self, job_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/job/{}", self.base_path_classic(), job_id);
+        let headers = vec![
+            //X-SFDC-Session is needed for API v1 we can just pass it our access token
+            ("X-SFDC-Session".to_string(), self.access_token.as_ref().unwrap().value.clone()),
+        ];
+
+        let params: Vec<String> = Vec::new();
+
+        let res = self.post(resource_url, params, headers).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
+
+    pub async fn abort_job(&mut self, job_id: &str) -> Result<String, Error> {
+        let resource_url = format!("{}/jobs/ingest/{}", self.base_path(), job_id);
+        let mut params = HashMap::new();
+        params.insert("state", "Aborted");
+
+        let res = self.patch(resource_url, params).await?;
+
+        if res.status().is_success() {
+            Ok(res.text().await?)
+        } else {
+            Err(Error::DescribeError(res.json().await?))
+        }
+    }
 
     pub async fn get_result_for_batch(&mut self, job_id: &str, batch_id: &str) -> Result<String, Error> {
         let resource_url = format!("{}/job/{}/batch/{}", self.base_path(), job_id, batch_id);
@@ -691,13 +722,13 @@ impl Client {
         Ok(res)
     }
 
-    async fn post<T: Serialize>(&mut self, url: String, params: T) -> Result<Response, Error> {
+    async fn post<T: Serialize>(&mut self, url: String, params: T, headers: Vec<(String, String)>) -> Result<Response, Error> {
         self.refresh().await?;
 
         let res = self
             .http_client
             .post(url)
-            .headers(self.create_header(vec![])?)
+            .headers(self.create_header(headers)?)
             .json(&params)
             .send()
             .await?;
