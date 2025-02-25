@@ -100,6 +100,46 @@ impl Client {
         }
     }
 
+    /// Login to Salesforce using client credentials authenticication
+    ///
+    /// Client credentials auth for server-to-server authentication.
+    /// https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5
+    ///
+    /// In contrast to the other login methods, we need the company specific login endpoint
+    /// (e.g. `https://MyDomainName.my.salesforce.com`) instead of the generic login endpoint.
+    pub async fn login_with_client_credentials(
+        &mut self,
+        login_endpoint: impl AsRef<str>,
+    ) -> Result<&mut Self, Error> {
+        self.set_login_endpoint(login_endpoint.as_ref());
+        let token_url = format!("{}/services/oauth2/token", login_endpoint.as_ref());
+        let params = [
+            ("grant_type", "client_credentials"),
+            ("client_id", self.client_id.as_ref().unwrap()),
+            ("client_secret", self.client_secret.as_ref().unwrap()),
+        ];
+        let res = self
+            .http_client
+            .post(token_url.as_str())
+            .form(&params)
+            .send()
+            .await?;
+
+        if res.status().is_success() {
+            let r: TokenResponse = res.json().await?;
+            self.access_token = Some(AccessToken {
+                value: r.access_token,
+                issued_at: r.issued_at,
+                token_type: r.token_type.ok_or(Error::NotLoggedIn)?,
+            });
+            self.instance_url = Some(r.instance_url);
+            Ok(self)
+        } else {
+            let error_response = res.json().await?;
+            Err(Error::TokenError(error_response))
+        }
+    }
+
     /// Login to Salesforce with username and password
     pub async fn login_with_credential(
         &mut self,
@@ -136,7 +176,11 @@ impl Client {
         }
     }
 
-    pub async fn login_by_soap(&mut self, username: String, password: String) -> Result<&mut Self, Error> {
+    pub async fn login_by_soap(
+        &mut self,
+        username: String,
+        password: String,
+    ) -> Result<&mut Self, Error> {
         let token_url = format!(
             "{login_endpoint}/services/Soap/u/{version}",
             login_endpoint = self.login_endpoint,
@@ -556,6 +600,37 @@ mod tests {
     struct Account {
         id: String,
         name: String,
+    }
+
+    #[tokio::test]
+    async fn login_with_client_credentials() -> Result<(), Error> {
+        let _m = mock("POST", "/services/oauth2/token")
+            .match_body("grant_type=client_credentials&client_id=aaa&client_secret=bbb")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "access_token": "this_is_access_token",
+                    "issued_at": "2019-10-01 00:00:00",
+                    "id": "12345",
+                    "instance_url": "https://ap.salesforce.com",
+                    "signature": "abcde",
+                    "token_type": "Bearer",
+                })
+                .to_string(),
+            )
+            .create();
+
+        let mut client = super::Client::new(Some("aaa".to_string()), Some("bbb".to_string()));
+        let url = &mockito::server_url();
+        client.login_with_client_credentials(&url).await?;
+        let token = client.access_token.unwrap();
+        assert_eq!("this_is_access_token", token.value);
+        assert_eq!("Bearer", token.token_type);
+        assert_eq!("2019-10-01 00:00:00", token.issued_at);
+        assert_eq!("https://ap.salesforce.com", client.instance_url.unwrap());
+
+        Ok(())
     }
 
     #[tokio::test]
