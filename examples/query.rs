@@ -1,22 +1,5 @@
-use rustforce::{response::QueryResponse, Client, Error};
-use serde::Deserialize;
+use rustforce::{Client, Error, RestApi};
 use std::env;
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-struct Account {
-    #[serde(rename = "attributes")]
-    attributes: Attribute,
-    id: String,
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Attribute {
-    url: String,
-    #[serde(rename = "type")]
-    sobject_type: String,
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -25,13 +8,17 @@ async fn main() -> Result<(), Error> {
     let username = env::var("SFDC_USERNAME").unwrap();
     let password = env::var("SFDC_PASSWORD").unwrap();
 
-    let mut client = Client::new(Some(client_id), Some(client_secret));
-    client.login_with_credential(username, password).await?;
+    let mut client = Client::new();
+    client.set_client_id(&client_id);
+    client.set_client_secret(&client_secret);
+    client.login_with_credential(&username, &password).await?;
 
-    let res: QueryResponse<Account> = client
+    let mut api = RestApi::new(client);
+
+    let query_result = api
         .query("SELECT Id, Name FROM Account WHERE id = '0012K00001drfGYQAY'")
         .await?;
-    println!("{:?}", res);
+    println!("{:?}", query_result);
 
     Ok(())
 }
